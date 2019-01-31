@@ -1,8 +1,18 @@
 [package]
 name = "hocon"
 version = "0.1.0"
-authors = ["François Mockers <f.mockers@samsung.com>"]
+authors = ["François Mockers <mockersf@gmail.com>"]
 edition = "2018"
+description = "Reads HOCON configuration files"
+repository = "https://github.com/mockersf/hocon.rs"
+homepage = "https://github.com/mockersf/hocon.rs"
+documentation = "https://docs.rs/hocon.rs"
+keywords = ["hocon", "configuration"]
+license = "MIT"
+readme = "README.md"
+
+[badges]
+travis-ci = { repository = "mockersf/hocon.rs" }
 
 [dependencies]
 nom = "4.2"
