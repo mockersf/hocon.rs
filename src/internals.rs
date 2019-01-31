@@ -4,7 +4,6 @@ use std::rc::Rc;
 
 use super::Hocon;
 
-#[derive(Debug)]
 pub(crate) struct HoconInternal {
     pub(crate) internal: Hash,
 }
@@ -125,7 +124,7 @@ impl HoconInternal {
 pub(crate) type Path = Vec<HoconValue>;
 pub(crate) type Hash = Vec<(Path, HoconValue)>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 enum Node {
     Leaf(HoconValue),
     Node(Vec<Rc<Child>>),
@@ -157,13 +156,12 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Child {
     key: HoconValue,
     value: RefCell<Node>,
 }
 
-#[derive(Debug, Clone)]
 pub(crate) struct HoconIntermediate {
     tree: Node,
 }
@@ -174,7 +172,7 @@ impl HoconIntermediate {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum HoconValue {
     Real(f64),
     Integer(i64),
