@@ -145,7 +145,7 @@ impl Node {
                     vec.into_iter()
                         .map(|c| {
                             (
-                                c.key.clone().to_string(),
+                                c.key.clone().string_value(),
                                 c.value.clone().into_inner().finalize(),
                             )
                         })
@@ -194,7 +194,7 @@ impl HoconValue {
         }
     }
 
-    fn to_string(self) -> String {
+    fn string_value(self) -> String {
         match self {
             HoconValue::String(s) => s,
             _ => String::from(""),
