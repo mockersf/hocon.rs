@@ -151,7 +151,7 @@ impl Node {
                         })
                         .collect(),
                 ),
-                _ => Hocon::BadValue,
+                _ => unreachable!(),
             },
         }
     }
@@ -197,7 +197,7 @@ impl HoconValue {
     fn string_value(self) -> String {
         match self {
             HoconValue::String(s) => s,
-            _ => String::from(""),
+            _ => unreachable!(),
         }
     }
 }
