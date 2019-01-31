@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
+use std::fs::File;
+use std::io::prelude::*;
+
 mod internals;
 mod parser;
 
@@ -22,6 +25,13 @@ impl Hocon {
             .map_err(|_err| ())
             .and_then(|hocon| hocon.merge())
             .map(|intermediate| intermediate.finalize())
+    }
+
+    pub fn load_from_file(path: &str) -> Result<Hocon, ()> {
+        let mut file = File::open(path).map_err(|_| ())?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).map_err(|_| ())?;
+        Self::load_from_str(&contents)
     }
 }
 

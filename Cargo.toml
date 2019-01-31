@@ -16,3 +16,6 @@ travis-ci = { repository = "mockersf/hocon.rs" }
 
 [dependencies]
 nom = "4.2"
+
+[dev-dependencies]
+test-generator = "0.2.2"
