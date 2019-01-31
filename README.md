@@ -13,6 +13,13 @@ let doc = Hocon::load_from_str(s).unwrap();
 assert_eq!(doc["a"].as_i64().unwrap(), 5);
 ```
 
+```rust
+let s = r#"{"b":5, "b":10}"#;
+let doc = Hocon::load_from_str(s).unwrap();
+
+assert_eq!(doc["b"].as_i64().unwrap(), 10);
+```
+
 ## Status
 
 https://github.com/lightbend/config/blob/master/HOCON.md
