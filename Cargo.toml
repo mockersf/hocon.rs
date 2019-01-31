@@ -1,0 +1,8 @@
+[package]
+name = "hocon"
+version = "0.1.0"
+authors = ["François Mockers <f.mockers@samsung.com>"]
+edition = "2018"
+
+[dependencies]
+nom = "4.2"
