@@ -145,8 +145,10 @@ mod tests {
     //     }
 
     #[test]
-    fn parse_int_array_trailing_comma() {
-        let s = r#"{"a":[5, 6, 7,]}"#;
+    fn parse_trailing_commas() {
+        let s = r#"{"a":[5, 6, 7,
+],
+}"#;
         let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"][1].as_i64().unwrap(), 6);

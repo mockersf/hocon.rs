@@ -32,7 +32,7 @@ named!(
     ws!(delimited!(
         char!('['),
         separated_list!(alt!(char!(',') | char!('\n')), wrapper),
-        alt!(char!(']') => { |_| () } | tag!(",]") => { |_| () } )
+        do_parse!(opt!(char!(',')) >> ws!(char!(']')) >> ())
     ))
 );
 
@@ -57,8 +57,8 @@ named!(
     ws!(map!(
         delimited!(
             char!('{'),
-            separated_list!(char!(','), key_value),
-            alt!(char!('}') => { |_| () } | tag!(",}") => { |_| () } )
+            separated_list!(alt!(char!(',') | char!('\n')), key_value),
+            do_parse!(opt!(char!(',')) >> ws!(char!('}')) >> ())
         ),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
     ))
