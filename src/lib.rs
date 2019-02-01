@@ -214,4 +214,78 @@ mod tests {
         assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
     }
 
+    #[test]
+    fn parse_change_type_to_object() {
+        let s = r#"{
+            "foo" : [0, 1, 2],
+            "foo" : { "b" : 43 }
+        }"#;
+        let doc = Hocon::load_from_str(s).unwrap();
+
+        assert!(doc["foo"][0].as_i64().is_none());
+        assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
+    }
+
+    #[test]
+    fn parse_change_type_to_array() {
+        let s = r#"{
+            "foo" : { "b" : 43 },
+            "foo" : [0, 1, 2],
+        }"#;
+        let doc = Hocon::load_from_str(s).unwrap();
+
+        assert_eq!(doc["foo"][0].as_i64().unwrap(), 0);
+        assert!(doc["foo"]["b"].as_i64().is_none());
+    }
+
+    #[test]
+    fn parse_reset_array_index() {
+        let s = r#"{
+            "foo" : [0, 1, 2],
+            "foo" : [5, 6, 7]
+        }"#;
+        let doc = Hocon::load_from_str(s).unwrap();
+
+        assert_eq!(doc["foo"][0].as_i64().unwrap(), 5);
+    }
+
+    #[test]
+    fn parse_error() {
+        let s = r#"{
+            "foo" : { "a" : 42 },
+            "foo" : {
+        }"#;
+        let doc = Hocon::load_from_str(s);
+
+        assert!(doc.is_err());
+    }
+
+    #[test]
+    fn wrong_index() {
+        let s = r#"{ "a" : 42 }"#;
+        let doc = Hocon::load_from_str(s).unwrap();
+
+        if let Hocon::BadValue = doc["missing"] {
+
+        } else {
+            assert!(false);
+        }
+        if let Hocon::BadValue = doc[0] {
+
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn wrong_casts() {
+        let s = r#"{ "a" : 42 }"#;
+        let doc = Hocon::load_from_str(s).unwrap();
+
+        assert!(doc["missing"].as_i64().is_none());
+        assert!(doc["missing"].as_f64().is_none());
+        assert!(doc["missing"].as_bool().is_none());
+        assert!(doc["missing"].as_str().is_none());
+    }
+
 }
