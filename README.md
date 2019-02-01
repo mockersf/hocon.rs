@@ -28,7 +28,7 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [ ] comments
 - [ ] omit root braces
 - [x] key-value separator
-- [ ] commas
+- [x] commas are optional if newline is present
 - [ ] whitespace
 - [x] duplicate keys and object merging
 - [ ] unquoted strings

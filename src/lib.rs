@@ -133,16 +133,27 @@ mod tests {
         assert_eq!(doc["a"][2].as_i64().unwrap(), 7);
     }
 
-    //     #[test]
-    //     fn parse_int_array_newline_as_separator() {
-    //         let s = r#"{"a":[5
-    // 6
-    // 7]}"#;
-    //         let doc = Hocon::load_from_str(s).unwrap();
+    #[test]
+    fn parse_int_array_newline_as_separator() {
+        let s = r#"{"a":[5
+    6
+    ]}"#;
+        let doc = Hocon::load_from_str(s).unwrap();
 
-    //         assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
-    //         assert_eq!(doc["a"][2].as_i64().unwrap(), 7);
-    //     }
+        assert_eq!(doc["a"][0].as_i64().unwrap(), 5);
+        assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
+    }
+
+    #[test]
+    fn parse_object_newline_as_separator() {
+        let s = r#"{"a":5
+"b":6
+}"#;
+        let doc = Hocon::load_from_str(s).unwrap();
+
+        assert_eq!(doc["a"].as_i64().unwrap(), 5);
+        assert_eq!(doc["b"].as_i64().unwrap(), 6);
+    }
 
     #[test]
     fn parse_trailing_commas() {
@@ -194,9 +205,9 @@ mod tests {
     #[test]
     fn parse_object_merging() {
         let s = r#"{
-        "foo" : { "a" : 42 },
-        "foo" : { "b" : 43 }
-    }"#;
+            "foo" : { "a" : 42 },
+            "foo" : { "b" : 43 }
+        }"#;
         let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"]["a"].as_i64().unwrap(), 42);

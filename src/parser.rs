@@ -4,6 +4,27 @@ use std::str;
 
 use crate::internals::{Hash, HoconInternal, HoconValue};
 
+named!(pub space, eat_separator!(&b" \t"[..]));
+
+macro_rules! sp (
+  ($i:expr, $($args:tt)*) => (
+    {
+      use nom::Convert;
+      use nom::Err;
+
+      match sep!($i, space, $($args)*) {
+        Err(e) => Err(e),
+        Ok((i1,o))    => {
+          match space(i1) {
+            Err(e) => Err(Err::convert(e)),
+            Ok((i2,_))    => Ok((i2, o))
+          }
+        }
+      }
+    }
+  )
+);
+
 named!(integer<i64>, flat_map!(recognize_float, parse_to!(i64)));
 
 named!(float<f64>, flat_map!(recognize_float, parse_to!(f64)));
@@ -29,22 +50,22 @@ named!(
 
 named!(
     array<Vec<HoconInternal>>,
-    ws!(delimited!(
-        char!('['),
-        separated_list!(alt!(char!(',') | char!('\n')), wrapper),
-        do_parse!(opt!(char!(',')) >> ws!(char!(']')) >> ())
+    sp!(delimited!(
+        do_parse!(char!('[') >> many0!(newline) >> ()),
+        separated_list!(separators, wrapper),
+        call!(closing, ']')
     ))
 );
 
 named!(
     key_value<Hash>,
-    ws!(alt!(
-        separated_pair!(string, alt!(char!(':') | char!('=')), wrapper)
+    sp!(alt!(
+        separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), wrapper)
             => { |(s, h): (&str, HoconInternal)|
                 HoconInternal::from_object(h.internal)
                     .add_to_path(vec![HoconValue::String(String::from(s))]).internal
             } |
-        pair!(string, hash)
+        pair!(ws!(string), hash)
             => { |(s, h): (&str, Hash)|
                 HoconInternal::from_object(h)
                     .add_to_path(vec![HoconValue::String(String::from(s))]).internal
@@ -53,34 +74,43 @@ named!(
 );
 
 named!(
+    separators<()>,
+    alt!(sp!(many1!(newline)) => { |_| () } | ws!(char!(',')) => { |_| () })
+);
+
+named!(
+    separated_hashlist<Vec<Hash>>,
+    separated_list!(separators, key_value)
+);
+
+named_args!(
+    closing(closing_char: char)<()>,
+    do_parse!(opt!(separators) >> eat_separator!(&b" \t\n"[..]) >> char!(closing_char) >> ())
+);
+
+named!(
     hash<Hash>,
-    ws!(map!(
-        delimited!(
-            char!('{'),
-            separated_list!(alt!(char!(',') | char!('\n')), key_value),
-            do_parse!(opt!(char!(',')) >> ws!(char!('}')) >> ())
-        ),
+    sp!(map!(
+        delimited!(char!('{'), separated_hashlist, call!(closing, '}')),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
     ))
 );
 
 named!(
     value<HoconValue>,
-    ws!(alt!(
-    //   hash    => { |h| HoconValue::Object(h)        } |
-    //   array   => { |v| HoconValue::Array(v)                } |
+    alt!(
       string  => { |s| HoconValue::String(String::from(s)) } |
       integer => { |i| HoconValue::Integer(i)              } |
       float   => { |f| HoconValue::Real(f)                 } |
       boolean => { |b| HoconValue::Boolean(b)              }
-    ))
+    )
 );
 
 named!(
     pub(crate) wrapper<HoconInternal>,
-    ws!(alt!(
+    alt!(
         hash  => { |h| HoconInternal::from_object(h) } |
         array => { |a| HoconInternal::from_array(a)  } |
         value => { |v| HoconInternal::from_value(v)  }
-    ))
+    )
 );
