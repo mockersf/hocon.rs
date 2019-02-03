@@ -67,6 +67,11 @@ named!(
     )
 );
 
+named!(
+    path_substitution<&str>,
+    delimited!(tag!("${"), unquoted_string, char!('}'))
+);
+
 named_args!(
     array<'a>(file_root: Option<&'a str>)<Vec<HoconInternal>>,
     sp!(delimited!(
@@ -142,18 +147,34 @@ named_args!(
 );
 
 named!(
+    single_value<HoconValue>,
+    alt!(
+        string  =>           { |s| HoconValue::String(String::from(s))           } |
+        integer =>           { |i| HoconValue::Integer(i)                        } |
+        float   =>           { |f| HoconValue::Real(f)                           } |
+        boolean =>           { |b| HoconValue::Boolean(b)                        } |
+        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s))   } |
+        path_substitution => { |p| HoconValue::PathSubstitution(String::from(p)) }
+    )
+);
+
+named!(
     value<HoconValue>,
-    do_parse!(
-        possible_comment
-            >> value:
-                alt!(
-                    string  => { |s| HoconValue::String(String::from(s)) } |
-                    integer => { |i| HoconValue::Integer(i)              } |
-                    float   => { |f| HoconValue::Real(f)                 } |
-                    boolean => { |b| HoconValue::Boolean(b)              } |
-                    unquoted_string => { |s| HoconValue::UnquotedString(String::from(s)) }
-                )
-            >> (value)
+    map!(
+        do_parse!(
+            possible_comment
+                >> first_value: single_value
+                >> remaining_values: many0!(single_value)
+                >> (first_value, remaining_values)
+        ),
+        |(first_value, mut remaining_values)| match remaining_values.is_empty() {
+            true => first_value,
+            false => {
+                let mut values = vec![first_value];
+                values.append(&mut remaining_values);
+                HoconValue::Concat(values)
+            }
+        }
     )
 );
 

@@ -90,9 +90,13 @@ impl Hocon {
         }
     }
 
-    pub fn as_str(&self) -> Option<&str> {
+    pub fn as_string(&self) -> Option<String> {
         match *self {
-            Hocon::String(ref v) => Some(v),
+            Hocon::String(ref v) => Some(v.to_string()),
+            Hocon::Boolean(true) => Some("true".to_string()),
+            Hocon::Boolean(false) => Some("false".to_string()),
+            Hocon::Integer(i) => Some(i.to_string()),
+            Hocon::Real(f) => Some(f.to_string()),
             _ => None,
         }
     }
@@ -114,7 +118,7 @@ mod tests {
         let s = r#"{"a":"dndjf"}"#;
         let doc = Hocon::load_from_str(None, s).unwrap();
 
-        assert_eq!(doc["a"].as_str().unwrap(), "dndjf");
+        assert_eq!(doc["a"].as_string().unwrap(), "dndjf");
     }
 
     #[test]
@@ -311,7 +315,7 @@ mod tests {
         assert!(doc["missing"].as_i64().is_none());
         assert!(doc["missing"].as_f64().is_none());
         assert!(doc["missing"].as_bool().is_none());
-        assert!(doc["missing"].as_str().is_none());
+        assert!(doc["missing"].as_string().is_none());
     }
 
     #[test]
@@ -327,7 +331,7 @@ mod tests {
         let s = r#"{"foo" : { b : hello }}"#;
         let doc = Hocon::load_from_str(None, s).unwrap();
 
-        assert_eq!(doc["foo"]["b"].as_str().unwrap(), "hello");
+        assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello");
     }
 
     #[test]
@@ -335,8 +339,23 @@ mod tests {
         let s = r#"{foo.b : hello }"#;
         let doc = Hocon::load_from_str(None, s).unwrap();
 
-        assert_eq!(doc["foo"]["b"].as_str().unwrap(), "hello");
+        assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello");
+    }
 
+    #[test]
+    fn parse_concat() {
+        let s = r#"{"foo" : "hello"" world n°"1 }"#;
+        let doc = Hocon::load_from_str(None, s).unwrap();
+
+        assert_eq!(doc["foo"].as_string().unwrap(), "hello world n°1");
+    }
+
+    #[test]
+    fn parse_path_substitution() {
+        let s = r#"{"who" : "world", "number": 1, "bar": "hello "${who}" n°"${number} }"#;
+        let doc = Hocon::load_from_str(None, s).unwrap();
+
+        assert_eq!(doc["bar"].as_string().unwrap(), "hello world n°1");
     }
 
 }
