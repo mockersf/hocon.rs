@@ -7,22 +7,34 @@ use crate::internals::{Hash, HoconInternal, HoconValue};
 named!(pub space, eat_separator!(&b" \t"[..]));
 
 macro_rules! sp (
-  ($i:expr, $($args:tt)*) => (
-    {
-      use nom::Convert;
-      use nom::Err;
+    ($i:expr, $($args:tt)*) => (
+        {
+            use nom::Convert;
+            use nom::Err;
 
-      match sep!($i, space, $($args)*) {
-        Err(e) => Err(e),
-        Ok((i1,o))    => {
-          match space(i1) {
-            Err(e) => Err(Err::convert(e)),
-            Ok((i2,_))    => Ok((i2, o))
-          }
+            match sep!($i, space, $($args)*) {
+                Err(e)         => Err(e),
+                Ok((i1, o))    => {
+                    match space(i1) {
+                        Err(e) => Err(Err::convert(e)),
+                        Ok((i2, _))    => Ok((i2, o))
+                    }
+                }
+            }
         }
-      }
-    }
-  )
+    )
+);
+
+named!(possible_comment<Option<()>>, opt!(multiline_comment));
+named!(
+    multiline_comment<()>,
+    do_parse!(comment >> many0!(alt!(newline => { |_| () } | comment)) >> ())
+);
+named!(
+    comment<()>,
+    sp!(do_parse!(
+        alt!(tag!("//") | tag!("#")) >> take_until_and_consume!("\n") >> ()
+    ))
 );
 
 named!(integer<i64>, flat_map!(recognize_float, parse_to!(i64)));
@@ -33,13 +45,12 @@ named!(float<f64>, flat_map!(recognize_float, parse_to!(f64)));
 named!(
     string<&str>,
     delimited!(
-        char!('\"'),
+        char!('"'),
         map_res!(
-            escaped!(call!(alphanumeric), '\\', one_of!("\"n\\")),
+            escaped!(none_of!("\"\n"), '\\', one_of!("\"n\\")),
             str::from_utf8
         ),
-        //map_res!(escaped!(take_while1!(is_alphanumeric), '\\', one_of!("\"n\\")), str::from_utf8),
-        char!('\"')
+        char!('"')
     )
 );
 
@@ -49,68 +60,154 @@ named!(
 );
 
 named!(
-    array<Vec<HoconInternal>>,
+    unquoted_string<&str>,
+    map_res!(
+        complete!(take_until_either1!("$\"{}[]:=,+#`^?!@*&'\\ \t\n")),
+        str::from_utf8
+    )
+);
+
+named_args!(
+    array<'a>(file_root: Option<&'a str>)<Vec<HoconInternal>>,
     sp!(delimited!(
         do_parse!(char!('[') >> many0!(newline) >> ()),
-        separated_list!(separators, wrapper),
+        separated_list!(separators, call!(wrapper, file_root)),
         call!(closing, ']')
     ))
 );
 
-named!(
-    key_value<Hash>,
-    sp!(alt!(
-        separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), wrapper)
-            => { |(s, h): (&str, HoconInternal)|
-                HoconInternal::from_object(h.internal)
-                    .add_to_path(vec![HoconValue::String(String::from(s))]).internal
-            } |
-        pair!(ws!(string), hash)
-            => { |(s, h): (&str, Hash)|
-                HoconInternal::from_object(h)
-                    .add_to_path(vec![HoconValue::String(String::from(s))]).internal
-            }
-    ))
+named_args!(
+    key_value<'a>(file_root: Option<&'a str>)<Hash>,
+    do_parse!(
+        ws!(possible_comment)
+            >> pair: sp!(alt!(
+                separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, file_root))
+                    => { |(s, h): (&str, HoconInternal)|
+                        HoconInternal::from_object(h.internal)
+                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal
+                    } |
+                pair!(ws!(string), call!(hash, file_root))
+                    => { |(s, h): (&str, Hash)|
+                        HoconInternal::from_object(h)
+                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal
+                    } |
+                separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, file_root))
+                    => { |(s, h): (&str, HoconInternal)|
+                        HoconInternal::from_object(h.internal)
+                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
+                    } |
+                pair!(ws!(unquoted_string), call!(hash, file_root))
+                    => { |(s, h): (&str, Hash)|
+                        HoconInternal::from_object(h)
+                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
+                    }
+            ))
+            >> (pair)
+    )
 );
 
 named!(
     separators<()>,
-    alt!(sp!(many1!(newline)) => { |_| () } | ws!(char!(',')) => { |_| () })
+    alt!(
+        sp!(multiline_comment) => { |_| () } |
+        sp!(many1!(newline)) => { |_| () } |
+        ws!(do_parse!(char!(',') >> possible_comment>> ())) => { |_| () }
+    )
 );
 
-named!(
-    separated_hashlist<Vec<Hash>>,
-    separated_list!(separators, key_value)
+named_args!(
+    separated_hashlist<'a>(file_root: Option<&'a str>)<Vec<Hash>>,
+    separated_list!(separators, call!(key_value, file_root))
 );
 
 named_args!(
     closing(closing_char: char)<()>,
-    do_parse!(opt!(separators) >> eat_separator!(&b" \t\n"[..]) >> char!(closing_char) >> ())
+    do_parse!(opt!(separators) >> char!(closing_char) >> ())
 );
 
-named!(
-    hash<Hash>,
+named_args!(
+    hash<'a>(file_root: Option<&'a str>)<Hash>,
     sp!(map!(
-        delimited!(char!('{'), separated_hashlist, call!(closing, '}')),
+        delimited!(char!('{'), call!(separated_hashlist, file_root), call!(closing, '}')),
+        |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
+    ))
+);
+
+named_args!(
+    root_hash<'a>(file_root: Option<&'a str>)<Hash>,
+    sp!(map!(
+        do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, file_root) >> (list)),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
     ))
 );
 
 named!(
     value<HoconValue>,
-    alt!(
-      string  => { |s| HoconValue::String(String::from(s)) } |
-      integer => { |i| HoconValue::Integer(i)              } |
-      float   => { |f| HoconValue::Real(f)                 } |
-      boolean => { |b| HoconValue::Boolean(b)              }
+    do_parse!(
+        possible_comment
+            >> value:
+                alt!(
+                    string  => { |s| HoconValue::String(String::from(s)) } |
+                    integer => { |i| HoconValue::Integer(i)              } |
+                    float   => { |f| HoconValue::Real(f)                 } |
+                    boolean => { |b| HoconValue::Boolean(b)              } |
+                    unquoted_string => { |s| HoconValue::UnquotedString(String::from(s)) }
+                )
+            >> (value)
     )
 );
 
 named!(
-    pub(crate) wrapper<HoconInternal>,
-    alt!(
-        hash  => { |h| HoconInternal::from_object(h) } |
-        array => { |a| HoconInternal::from_array(a)  } |
-        value => { |v| HoconInternal::from_value(v)  }
+    include<&str>,
+    ws!(do_parse!(
+        tag!("include")
+            >> file_name: sp!(string)
+            >> alt!(opt!(multiline_comment) => { |_| () } | newline => { |_| () })
+            >> (file_name)
+    ))
+);
+
+named_args!(
+    root_include<'a>(file_root: Option<&'a str>)<HoconInternal>,
+    map!(
+        do_parse!(file_name: include >> doc: call!(root, file_root) >> ((file_name, doc))),
+        |(file_name, mut doc)| match file_root {
+            Some(root) => doc.add_include(&root, file_name),
+            None => doc,
+        }
+    )
+);
+
+named_args!(
+    wrapper<'a>(file_root: Option<&'a str>)<HoconInternal>,
+    do_parse!(
+        possible_comment
+            >> wrapped:
+                alt!(
+                    call!(hash, file_root)    => { |h| HoconInternal::from_object(h)  } |
+                    call!(array, file_root)   => { |a| HoconInternal::from_array(a)   } |
+                    include => { |f| match file_root {
+                        Some(root) => HoconInternal::from_include(&root, f),
+                        None => HoconInternal::from_value(HoconValue::BadValue)
+                    } }|
+                    value   => { |v| HoconInternal::from_value(v)   }
+                )
+            >> (wrapped)
+    )
+);
+
+named_args!(
+    pub(crate) root<'a>(file_root: Option<&'a str>)<HoconInternal>,
+    do_parse!(
+        possible_comment
+            >> wrapped:
+                alt!(
+                    call!(root_include, file_root) => { |d| d                             } |
+                    call!(root_hash, file_root)    => { |h| HoconInternal::from_object(h) } |
+                    call!(hash, file_root)         => { |h| HoconInternal::from_object(h) } |
+                    call!(array, file_root)        => { |a| HoconInternal::from_array(a)  } |
+                    value        => { |v| HoconInternal::from_value(v)  }
+                )
+            >> (wrapped)
     )
 );

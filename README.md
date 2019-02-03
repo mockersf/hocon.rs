@@ -25,8 +25,8 @@ assert_eq!(doc["b"].as_i64().unwrap(), 10);
 https://github.com/lightbend/config/blob/master/HOCON.md
 
 - [x] parsing JSON
-- [ ] comments
-- [ ] omit root braces
+- [x] comments
+- [x] omit root braces
 - [x] key-value separator
 - [x] commas are optional if newline is present
 - [ ] whitespace
@@ -37,5 +37,5 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [ ] path expressions
 - [ ] path as keys
 - [ ] substitutions
-- [ ] includes
+- [x] includes
 - [ ] conversion of numerically-indexed objects to arrays
