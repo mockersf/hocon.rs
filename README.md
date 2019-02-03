@@ -35,7 +35,7 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [ ] multi-line strings
 - [ ] value concatenation
 - [ ] path expressions
-- [ ] path as keys
+- [x] path as keys
 - [ ] substitutions
 - [x] includes
 - [ ] conversion of numerically-indexed objects to arrays

@@ -330,4 +330,13 @@ mod tests {
         assert_eq!(doc["foo"]["b"].as_str().unwrap(), "hello");
     }
 
+    #[test]
+    fn parse_path() {
+        let s = r#"{foo.b : hello }"#;
+        let doc = Hocon::load_from_str(None, s).unwrap();
+
+        assert_eq!(doc["foo"]["b"].as_str().unwrap(), "hello");
+
+    }
+
 }
