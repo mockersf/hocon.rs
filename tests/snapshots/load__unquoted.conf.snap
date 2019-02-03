@@ -1,0 +1,7 @@
+---
+created: "2019-02-03T21:18:07.128092+00:00"
+creator: insta@0.5.4
+expression: stable_readable_display(&doc.unwrap())
+source: tests/load.rs
+---
+"{a: 5, b: 6.7, c: [1, 2, 3], d: true, e: \"val\", f: {g: false}, h: {i: {j: 5, k: \"hello\"}}}"
