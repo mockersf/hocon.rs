@@ -18,8 +18,8 @@ travis-ci = { repository = "mockersf/hocon.rs" }
 nom = "4.2"
 
 [dev-dependencies]
-test-generator = "0.2.2"
-insta = "0.5.4"
+test-generator = "0.2"
+insta = "0.6"
 
 [features]
 default = [ "test-snapshot" ]
