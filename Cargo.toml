@@ -20,3 +20,7 @@ nom = "4.2"
 [dev-dependencies]
 test-generator = "0.2.2"
 insta = "0.5.4"
+
+[features]
+default = [ "test-snapshot" ]
+test-snapshot = []

@@ -1,3 +1,5 @@
+#![cfg(feature = "test-snapshot")]
+
 use insta::assert_debug_snapshot_matches;
 use test_generator;
 
