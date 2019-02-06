@@ -11,6 +11,17 @@
     missing_docs
 )]
 
+//! HOCON
+//!
+//! Parse HOCON configuration files in Rust
+//!
+//! ```rust
+//! let s = r#"{"a":5}"#;
+//! let doc = Hocon::load_from_str(s).unwrap();
+//! let a = doc["a"].as_i64();
+//! ```
+//!  
+
 use std::collections::HashMap;
 use std::ops::Index;
 
@@ -21,14 +32,22 @@ use std::path::Path;
 mod internals;
 mod parser;
 
+/// HOCON document
 #[derive(Debug, Clone)]
 pub enum Hocon {
+    /// A floating value
     Real(f64),
+    /// An integer value
     Integer(i64),
+    /// A string
     String(String),
+    /// A boolean
     Boolean(bool),
+    /// An array of `Hocon` values
     Array(Vec<Hocon>),
+    /// An HashMap of `Hocon` values with keys
     Hash(HashMap<String, Hocon>),
+    /// A `BadValue`, marking an error in parsing or an missing value
     BadValue,
 }
 
@@ -62,10 +81,13 @@ impl Hocon {
         ))
     }
 
+    /// Load a string containing an `Hocon` document. Includes are not supported when
+    /// loading from a string
     pub fn load_from_str(s: &str) -> Result<Hocon, ()> {
         Self::load_from_str_with_file_root(None, s)
     }
 
+    /// Load the HOCON configuration file containing an `Hocon` document
     pub fn load_from_file(path: &str) -> Result<Hocon, ()> {
         let (root, contents) = Self::load_file("", path)?;
         Self::load_from_str_with_file_root(Some(&root), &contents)
@@ -96,6 +118,7 @@ impl Index<usize> for Hocon {
 }
 
 impl Hocon {
+    /// Try to cast a value as a `f64` value
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Hocon::Real(ref v) => Some(*v),
@@ -103,6 +126,7 @@ impl Hocon {
         }
     }
 
+    /// Try to cast a value as a `i64` value
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Hocon::Integer(ref v) => Some(*v),
@@ -110,6 +134,7 @@ impl Hocon {
         }
     }
 
+    /// Try to cast a value as a `String` value
     pub fn as_string(&self) -> Option<String> {
         match *self {
             Hocon::String(ref v) => Some(v.to_string()),
@@ -121,6 +146,7 @@ impl Hocon {
         }
     }
 
+    /// Try to cast a value as a `bool` value
     pub fn as_bool(&self) -> Option<bool> {
         match *self {
             Hocon::Boolean(ref v) => Some(*v),
