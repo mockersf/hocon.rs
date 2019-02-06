@@ -49,6 +49,8 @@ pub enum Hocon {
     Array(Vec<Hocon>),
     /// An HashMap of `Hocon` values with keys
     Hash(HashMap<String, Hocon>),
+    /// A null value
+    Null,
     /// A `BadValue`, marking an error in parsing or an missing value
     BadValue,
 }

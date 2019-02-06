@@ -41,6 +41,8 @@ named!(integer<i64>, flat_map!(recognize_float, parse_to!(i64)));
 
 named!(float<f64>, flat_map!(recognize_float, parse_to!(f64)));
 
+named!(null, tag!("null"));
+
 //FIXME: verify how json strings are formatted
 named!(
     string<&str>,
@@ -153,6 +155,7 @@ named!(
         integer =>           { |i| HoconValue::Integer(i)                        } |
         float   =>           { |f| HoconValue::Real(f)                           } |
         boolean =>           { |b| HoconValue::Boolean(b)                        } |
+        null =>              { |_| HoconValue::Null                              } |
         unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s))   } |
         path_substitution => { |p| HoconValue::PathSubstitution(String::from(p)) }
     )

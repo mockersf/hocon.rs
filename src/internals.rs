@@ -241,12 +241,14 @@ pub(crate) enum HoconValue {
     Boolean(bool),
     Concat(Vec<HoconValue>),
     PathSubstitution(String),
+    Null,
     BadValue,
 }
 
 impl HoconValue {
     fn finalize(self) -> Hocon {
         match self {
+            HoconValue::Null => Hocon::Null,
             HoconValue::BadValue => Hocon::BadValue,
             HoconValue::Boolean(b) => Hocon::Boolean(b),
             HoconValue::Integer(i) => Hocon::Integer(i),
