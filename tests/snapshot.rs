@@ -33,7 +33,7 @@ fn stable_readable_display(value: &Hocon) -> String {
                     .join(", ")
             )
         }
-
+        Hocon::Null => String::from("null"),
         Hocon::BadValue => String::from("BadValue"),
     }
 }
