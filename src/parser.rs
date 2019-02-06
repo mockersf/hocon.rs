@@ -170,13 +170,12 @@ named!(
                 >> remaining_values: many0!(single_value)
                 >> (first_value, remaining_values)
         ),
-        |(first_value, mut remaining_values)| match remaining_values.is_empty() {
-            true => first_value,
-            false => {
-                let mut values = vec![first_value];
-                values.append(&mut remaining_values);
-                HoconValue::Concat(values)
-            }
+        |(first_value, mut remaining_values)| if remaining_values.is_empty() {
+            first_value
+        } else {
+            let mut values = vec![first_value];
+            values.append(&mut remaining_values);
+            HoconValue::Concat(values)
         }
     )
 );
