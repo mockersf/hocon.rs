@@ -236,11 +236,11 @@ impl HoconIntermediate {
 pub(crate) enum HoconValue {
     Real(f64),
     Integer(i64),
-    String(std::string::String),
-    UnquotedString(std::string::String),
+    String(String),
+    UnquotedString(String),
     Boolean(bool),
     Concat(Vec<HoconValue>),
-    PathSubstitution(std::string::String),
+    PathSubstitution(String),
     BadValue,
 }
 
@@ -296,7 +296,7 @@ impl HoconValue {
     }
 }
 
-impl std::cmp::PartialEq for HoconValue {
+impl PartialEq for HoconValue {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
             (HoconValue::Integer(left), HoconValue::Integer(right)) => left == right,

@@ -1,3 +1,16 @@
+#![deny(
+    warnings,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_import_braces,
+    unused_qualifications,
+    missing_docs
+)]
+
 use std::collections::HashMap;
 use std::ops::Index;
 
@@ -12,7 +25,7 @@ mod parser;
 pub enum Hocon {
     Real(f64),
     Integer(i64),
-    String(std::string::String),
+    String(String),
     Boolean(bool),
     Array(Vec<Hocon>),
     Hash(HashMap<String, Hocon>),
@@ -29,7 +42,10 @@ impl Hocon {
             .1)
     }
 
-    pub fn load_from_str(file_root: Option<&str>, s: &str) -> Result<Hocon, ()> {
+    pub(crate) fn load_from_str_with_file_root(
+        file_root: Option<&str>,
+        s: &str,
+    ) -> Result<Hocon, ()> {
         Self::parse_str_to_internal(file_root, s)
             .and_then(|hocon| hocon.merge())
             .map(|intermediate| intermediate.finalize())
@@ -46,9 +62,13 @@ impl Hocon {
         ))
     }
 
+    pub fn load_from_str(s: &str) -> Result<Hocon, ()> {
+        Self::load_from_str_with_file_root(None, s)
+    }
+
     pub fn load_from_file(path: &str) -> Result<Hocon, ()> {
         let (root, contents) = Self::load_file("", path)?;
-        Self::load_from_str(Some(&root), &contents)
+        Self::load_from_str_with_file_root(Some(&root), &contents)
     }
 }
 
@@ -116,7 +136,7 @@ mod tests {
     #[test]
     fn parse_string() {
         let s = r#"{"a":"dndjf"}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_string().unwrap(), "dndjf");
     }
@@ -124,7 +144,7 @@ mod tests {
     #[test]
     fn parse_int() {
         let s = r#"{"a":5}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_i64().unwrap(), 5);
     }
@@ -132,7 +152,7 @@ mod tests {
     #[test]
     fn parse_float() {
         let s = r#"{"a":5.7}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_f64().unwrap(), 5.7);
     }
@@ -140,7 +160,7 @@ mod tests {
     #[test]
     fn parse_bool() {
         let s = r#"{"a":true}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_bool().unwrap(), true);
     }
@@ -148,7 +168,7 @@ mod tests {
     #[test]
     fn parse_int_array() {
         let s = r#"{"a":[5, 6, 7]}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
         assert_eq!(doc["a"][2].as_i64().unwrap(), 7);
@@ -159,7 +179,7 @@ mod tests {
         let s = r#"{"a":[5
     6
     ]}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"][0].as_i64().unwrap(), 5);
         assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
@@ -170,7 +190,7 @@ mod tests {
         let s = r#"{"a":5
 "b":6
 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_i64().unwrap(), 5);
         assert_eq!(doc["b"].as_i64().unwrap(), 6);
@@ -181,7 +201,7 @@ mod tests {
         let s = r#"{"a":[5, 6, 7,
 ],
 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
     }
@@ -189,7 +209,7 @@ mod tests {
     #[test]
     fn parse_nested() {
         let s = r#"{"a":{"b":[{"c":5},{"c":6}]}}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"]["b"][1]["c"].as_i64().unwrap(), 6);
     }
@@ -199,7 +219,7 @@ mod tests {
         let s = r#"{"a":
     5
     }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_i64().unwrap(), 5);
     }
@@ -217,7 +237,7 @@ mod tests {
     // comment 6
     8]
 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_i64().unwrap(), 5);
     }
@@ -225,7 +245,7 @@ mod tests {
     #[test]
     fn parse_keyvalue_separator() {
         let s = r#"{"a":5,"b"=6,"c" {"a":1}}}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["a"].as_i64().unwrap(), 5);
         assert_eq!(doc["b"].as_i64().unwrap(), 6);
@@ -238,7 +258,7 @@ mod tests {
             "foo" : { "a" : 42 },
             "foo" : { "b" : 43 }
         }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"]["a"].as_i64().unwrap(), 42);
         assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
@@ -250,7 +270,7 @@ mod tests {
             "foo" : [0, 1, 2],
             "foo" : { "b" : 43 }
         }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert!(doc["foo"][0].as_i64().is_none());
         assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
@@ -262,7 +282,7 @@ mod tests {
             "foo" : { "b" : 43 },
             "foo" : [0, 1, 2],
         }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"][0].as_i64().unwrap(), 0);
         assert!(doc["foo"]["b"].as_i64().is_none());
@@ -274,7 +294,7 @@ mod tests {
             "foo" : [0, 1, 2],
             "foo" : [5, 6, 7]
         }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"][0].as_i64().unwrap(), 5);
     }
@@ -285,7 +305,7 @@ mod tests {
             "foo" : { "a" : 42 },
             "foo" : {
         }"#;
-        let doc = Hocon::load_from_str(None, s);
+        let doc = Hocon::load_from_str(s);
 
         assert!(doc.is_err());
     }
@@ -293,7 +313,7 @@ mod tests {
     #[test]
     fn wrong_index() {
         let s = r#"{ "a" : 42 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         if let Hocon::BadValue = doc["missing"] {
 
@@ -310,7 +330,7 @@ mod tests {
     #[test]
     fn wrong_casts() {
         let s = r#"{ "a" : 42 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert!(doc["missing"].as_i64().is_none());
         assert!(doc["missing"].as_f64().is_none());
@@ -321,7 +341,7 @@ mod tests {
     #[test]
     fn parse_root_braces_omitted() {
         let s = r#""foo" : { "b" : 43 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
     }
@@ -329,7 +349,7 @@ mod tests {
     #[test]
     fn parse_unquoted_string() {
         let s = r#"{"foo" : { b : hello }}"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello");
     }
@@ -337,7 +357,7 @@ mod tests {
     #[test]
     fn parse_path() {
         let s = r#"{foo.b : hello }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello");
     }
@@ -345,7 +365,7 @@ mod tests {
     #[test]
     fn parse_concat() {
         let s = r#"{"foo" : "hello"" world n°"1 }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["foo"].as_string().unwrap(), "hello world n°1");
     }
@@ -353,7 +373,7 @@ mod tests {
     #[test]
     fn parse_path_substitution() {
         let s = r#"{"who" : "world", "number": 1, "bar": "hello "${who}" n°"${number} }"#;
-        let doc = Hocon::load_from_str(None, s).unwrap();
+        let doc = Hocon::load_from_str(s).unwrap();
 
         assert_eq!(doc["bar"].as_string().unwrap(), "hello world n°1");
     }
