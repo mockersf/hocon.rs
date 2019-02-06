@@ -16,6 +16,8 @@
 //! Parse HOCON configuration files in Rust
 //!
 //! ```rust
+//! use hocon::Hocon;
+//!
 //! let s = r#"{"a":5}"#;
 //! let doc = Hocon::load_from_str(s).unwrap();
 //! let a = doc["a"].as_i64();
