@@ -126,6 +126,7 @@ impl Hocon {
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Hocon::Real(ref v) => Some(*v),
+            Hocon::Integer(ref v) => Some(*v as f64),
             _ => None,
         }
     }
