@@ -22,7 +22,24 @@
 //! let doc = Hocon::load_from_str(s).unwrap();
 //! let a = doc["a"].as_i64();
 //! ```
-//!  
+//!
+//! Support serde to deserialize to a `struct`
+//!
+//! ```rust
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Configuration {
+//!     host: String,
+//!     port: u8,
+//!     auto_connect: bool,
+//! }
+//!
+//! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
+//!
+//! let conf: Configuration = hocon::serde::from_str(s).unwrap();
+//!  ````
+//!
 
 use std::collections::HashMap;
 use std::ops::Index;
@@ -33,6 +50,9 @@ use std::path::Path;
 
 mod internals;
 mod parser;
+
+// #[cfg(feature = "serde-support")]
+pub mod serde;
 
 /// HOCON document
 #[derive(Debug, Clone)]

@@ -20,6 +20,23 @@ let doc = Hocon::load_from_str(s).unwrap();
 assert_eq!(doc["b"].as_i64().unwrap(), 10);
 ```
 
+Serde support is enabled by default and can be used to deserialize HOCON documents to `struct`s. It can be disabled by disabling default features.
+
+```rust
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Configuration {
+    host: String,
+    port: u8,
+    auto_connect: bool,
+}
+
+let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
+
+let conf: Configuration = hocon::serde::from_str(s).unwrap();
+```
+
 ## Status
 
 https://github.com/lightbend/config/blob/master/HOCON.md
