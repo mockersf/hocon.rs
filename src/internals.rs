@@ -37,9 +37,17 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn from_include(file_root: &str, file_path: &str) -> Self {
-        if let Ok(included) = Hocon::load_file(file_root, file_path)
-            .and_then(|(p, s)| Hocon::parse_str_to_internal(Some(&p), &s))
+    pub(crate) fn from_include(file_root: Option<&str>, file_path: &str, depth: usize) -> Self {
+        if depth > 10 || file_root.is_none() {
+            Self {
+                internal: vec![(
+                    vec![HoconValue::String(String::from(file_path))],
+                    HoconValue::BadValue,
+                )],
+            }
+        } else if let Ok(included) =
+            Hocon::load_file(file_root.expect("file_root is present"), file_path)
+                .and_then(|(p, s)| Hocon::parse_str_to_internal(Some(&p), &s, depth + 1))
         {
             included
         } else {
@@ -52,8 +60,8 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn add_include(&mut self, file_root: &str, file_path: &str) -> Self {
-        let mut included = Self::from_include(file_root, file_path);
+    pub(crate) fn add_include(&mut self, file_root: &str, file_path: &str, depth: usize) -> Self {
+        let mut included = Self::from_include(Some(file_root), file_path, depth);
 
         included.internal.append(&mut self.internal);
 

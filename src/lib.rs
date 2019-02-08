@@ -79,17 +79,21 @@ impl Hocon {
     pub(crate) fn parse_str_to_internal(
         file_root: Option<&str>,
         s: &str,
+        depth: usize,
     ) -> Result<internals::HoconInternal, ()> {
-        Ok(parser::root(format!("{}\0", s).as_bytes(), file_root)
-            .map_err(|_| ())?
-            .1)
+        Ok(
+            parser::root(format!("{}\n\0", s).as_bytes(), file_root, depth)
+                .map_err(|_| ())?
+                .1,
+        )
     }
 
     pub(crate) fn load_from_str_with_file_root(
         file_root: Option<&str>,
         s: &str,
+        depth: usize,
     ) -> Result<Hocon, ()> {
-        Self::parse_str_to_internal(file_root, s)
+        Self::parse_str_to_internal(file_root, s, depth)
             .and_then(|hocon| hocon.merge())
             .map(|intermediate| intermediate.finalize())
     }
@@ -108,13 +112,13 @@ impl Hocon {
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
     pub fn load_from_str(s: &str) -> Result<Hocon, ()> {
-        Self::load_from_str_with_file_root(None, s)
+        Self::load_from_str_with_file_root(None, s, 0)
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
     pub fn load_from_file(path: &str) -> Result<Hocon, ()> {
         let (root, contents) = Self::load_file("", path)?;
-        Self::load_from_str_with_file_root(Some(&root), &contents)
+        Self::load_from_str_with_file_root(Some(&root), &contents, 0)
     }
 }
 
