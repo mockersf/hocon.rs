@@ -88,6 +88,7 @@ named_args!(
     do_parse!(
         ws!(possible_comment)
             >> pair: sp!(alt!(
+                call!(include) => { |path| HoconInternal::from_include(file_root, path, depth).internal } |
                 separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, file_root, depth))
                     => { |(s, h): (&str, HoconInternal)|
                         HoconInternal::from_object(h.internal)
@@ -150,15 +151,15 @@ named_args!(
 
 named!(
     single_value<HoconValue>,
-    alt!(
+    sp!(alt!(
         string  =>           { |s| HoconValue::String(String::from(s))           } |
         integer =>           { |i| HoconValue::Integer(i)                        } |
         float   =>           { |f| HoconValue::Real(f)                           } |
         boolean =>           { |b| HoconValue::Boolean(b)                        } |
         null =>              { |_| HoconValue::Null                              } |
-        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s))   } |
-        path_substitution => { |p| HoconValue::PathSubstitution(String::from(p)) }
-    )
+        path_substitution => { |p| HoconValue::PathSubstitution(String::from(p)) } |
+        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s))   }
+    ))
 );
 
 named!(
@@ -167,7 +168,7 @@ named!(
         do_parse!(
             possible_comment
                 >> first_value: single_value
-                >> remaining_values: many0!(single_value)
+                >> remaining_values: many0!(sp!(single_value))
                 >> (first_value, remaining_values)
         ),
         |(first_value, mut remaining_values)| if remaining_values.is_empty() {
@@ -184,7 +185,11 @@ named!(
     include<&str>,
     ws!(do_parse!(
         tag!("include")
-            >> file_name: sp!(string)
+            >> file_name:
+                sp!(alt!(
+                    call!(string)
+                        | do_parse!(tag!("file(") >> file_name: string >> tag!(")") >> (file_name))
+                ))
             >> alt!(opt!(multiline_comment) => { |_| () } | newline => { |_| () })
             >> (file_name)
     ))
