@@ -8,6 +8,7 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+    - env: HOCON_TEST_SUITE
   fast_finish: true
   include:
     - rust: stable
@@ -43,6 +44,10 @@ matrix:
             - cmake
           sources:
             - kalakris-cmake
+    - rust: stable
+      env: HOCON_TEST_SUITE
+      script:
+        - ./hocon-test-suite.sh
 
 
 cache: cargo
