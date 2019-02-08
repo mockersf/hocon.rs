@@ -4,7 +4,20 @@ use std::str;
 
 use crate::internals::{Hash, HoconInternal, HoconValue};
 
-named!(pub space, eat_separator!(&b" \t"[..]));
+named!(
+    space<()>,
+    map!(
+        many0!(alt!(
+            tag!(" ")
+                | tag!("\t")
+                | tag!("\u{feff}")
+                | tag!("\u{00a0}")
+                | tag!("\u{2007}")
+                | tag!("\u{202f}")
+        )),
+        |_| ()
+    )
+);
 
 macro_rules! sp (
     ($i:expr, $($args:tt)*) => (
@@ -61,10 +74,49 @@ named!(
     alt!(value!(false, tag!("false")) | value!(true, tag!("true")))
 );
 
+macro_rules! take_until_tag1 (
+    ($input:expr, $arr:expr) => (
+        {
+            use nom::lib::std::result::Result::*;
+            use nom::lib::std::option::Option::*;
+            use nom::{Err,Needed,IResult,need_more_err,ErrorKind};
+
+            use nom::InputIter;
+            use nom::InputTake;
+
+            let res: IResult<_, _> = match $input.iter_indices()
+                .fold((0, None),
+                    |(old_c, pos), (i, c)| {
+                        if pos.is_some() {
+                            (old_c, pos)
+                        } else if $arr.contains(&str::from_utf8(&[c]).unwrap()) {
+                            (c, Some(i))
+                        } else {
+                            if $arr.contains(&str::from_utf8(&[old_c, c]).unwrap()) {
+                                (c, Some(i - 1))
+                            } else {
+                                (c, None)
+                            }
+                        }
+                    }
+                )
+            {
+                (_, Some(0)) => Err(Err::Error(error_position!($input, ErrorKind::TakeUntilEither::<u32>))),
+                (_, Some(n)) => Ok($input.take_split(n)),
+                (_, None)    => need_more_err($input, Needed::Size(1), ErrorKind::TakeUntilEither::<u32>)
+            };
+            res
+        }
+    );
+);
+
 named!(
     unquoted_string<&str>,
     map_res!(
-        complete!(take_until_either1!("$\"{}[]:=,+#`^?!@*&'\\ \t\n")),
+        complete!(take_until_tag1!([
+            "$", "\"", "{", "}", "[", "]", ":", "=", ",", "+", "#", "`", "^", "?", "!", "@", "*",
+            "&", "'", "\\", " ", "\t", "\n", "//"
+        ])),
         str::from_utf8
     )
 );

@@ -433,4 +433,22 @@ mod tests {
         assert_eq!(doc["bar"].as_string().unwrap(), "hello world n°1");
     }
 
+    #[test]
+    fn parse_file_ends_with_unquoted_string() {
+        let s = r#"#
+foo:bar"#;
+        let doc = dbg!(Hocon::load_from_str(s).unwrap());
+
+        assert_eq!(doc["foo"].as_string().unwrap(), "bar");
+    }
+
+    #[test]
+    fn parse_comment_in_array_no_comma() {
+        let s = r#"a=[1 // zut
+        2]"#;
+        let doc = dbg!(Hocon::load_from_str(s).unwrap());
+
+        assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    }
+
 }
