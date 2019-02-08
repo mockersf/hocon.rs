@@ -451,4 +451,12 @@ foo:bar"#;
         assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     }
 
+    #[test]
+    fn parse_substitute_array() {
+        let s = r#"a=[1, 2, 3],b=[${a}]"#;
+        let doc = dbg!(Hocon::load_from_str(s).unwrap());
+
+        assert_eq!(doc["b"][0][1].as_i64().unwrap(), 2);
+    }
+
 }

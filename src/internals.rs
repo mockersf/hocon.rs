@@ -155,7 +155,7 @@ impl HoconInternal {
                 }
             }
             let mut leaf = current_node.value.borrow_mut();
-            *leaf = Node::Leaf(item.substitute(&root));
+            *leaf = item.substitute(&root);
         }
 
         Ok(HoconIntermediate {
@@ -199,21 +199,24 @@ impl Node {
         }
     }
 
-    fn find_key(&self, path: Vec<HoconValue>) -> HoconValue {
+    fn find_key(&self, path: Vec<HoconValue>) -> Node {
         match (self, &path) {
-            (Node::Leaf(v), ref path) if path.is_empty() => v.clone(),
+            (Node::Leaf(_), ref path) if path.is_empty() => self.clone(),
             (Node::Node(children), _) => {
                 let mut iter = path.clone().into_iter();
-                let first = iter.nth(0).unwrap();
+                let first = iter.nth(0);
                 let remaining = iter.collect();
 
-                children
-                    .iter()
-                    .find(|child| child.key == first)
-                    .map(|child| child.find_key(remaining))
-                    .unwrap_or(HoconValue::BadValue)
+                match first {
+                    None => self.clone(),
+                    Some(first) => children
+                        .iter()
+                        .find(|child| child.key == first)
+                        .map(|child| child.find_key(remaining))
+                        .unwrap_or(Node::Leaf(HoconValue::BadValue)),
+                }
             }
-            _ => HoconValue::BadValue,
+            _ => Node::Leaf(HoconValue::BadValue),
         }
     }
 }
@@ -225,7 +228,7 @@ struct Child {
 }
 
 impl Child {
-    fn find_key(&self, path: Vec<HoconValue>) -> HoconValue {
+    fn find_key(&self, path: Vec<HoconValue>) -> Node {
         self.value.clone().into_inner().find_key(path)
     }
 }
@@ -287,7 +290,7 @@ impl HoconValue {
         }
     }
 
-    fn substitute(self, current_tree: &Rc<Child>) -> HoconValue {
+    fn substitute(self, current_tree: &Rc<Child>) -> Node {
         match self {
             HoconValue::PathSubstitution(path) => current_tree.find_key(
                 path.split('.')
@@ -295,13 +298,18 @@ impl HoconValue {
                     .map(HoconValue::String)
                     .collect(),
             ),
-            HoconValue::Concat(values) => HoconValue::Concat(
+            HoconValue::Concat(values) => dbg!(Node::Leaf(HoconValue::Concat(
                 values
                     .into_iter()
                     .map(|v| v.substitute(&current_tree))
-                    .collect(),
-            ),
-            v => v,
+                    .map(|v| if let Node::Leaf(value) = v {
+                        value
+                    } else {
+                        HoconValue::BadValue
+                    })
+                    .collect::<Vec<_>>()
+            ))),
+            v => Node::Leaf(v),
         }
     }
 }
