@@ -459,4 +459,12 @@ foo:bar"#;
         assert_eq!(doc["b"][0][1].as_i64().unwrap(), 2);
     }
 
+    #[test]
+    fn parse_empty_objects() {
+        let s = r#"a={b{}},b=5"#;
+        let doc = dbg!(Hocon::load_from_str(s).unwrap());
+
+        assert_eq!(doc["b"].as_i64().unwrap(), 5);
+    }
+
 }

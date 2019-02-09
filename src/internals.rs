@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use super::Hocon;
 
@@ -177,7 +178,7 @@ impl Node {
     fn finalize(self) -> Hocon {
         match self {
             Node::Leaf(v) => v.finalize(),
-            Node::Node(vec) => match vec.first().unwrap().key {
+            Node::Node(ref vec) => vec.first().map(|ref first| match first.key {
                 HoconValue::Integer(_) => Hocon::Array(
                     vec.into_iter()
                         .map(|c| c.value.clone().into_inner().finalize())
@@ -195,7 +196,7 @@ impl Node {
                 ),
                 // Keys should only be integer or strings
                 _ => unreachable!(),
-            },
+            }).unwrap_or_else(|| Hocon::Hash(HashMap::new())),
         }
     }
 
