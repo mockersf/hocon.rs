@@ -202,8 +202,6 @@ mod tests {
         assert_eq!(val.as_string(), Some(String::from("test")));
         assert_eq!(val[0], Hocon::BadValue);
         assert_eq!(val["a"], Hocon::BadValue);
-
-
     }
 
     #[test]

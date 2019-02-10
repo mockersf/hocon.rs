@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use super::Hocon;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct HoconInternal {
     pub(crate) internal: Hash,
 }
@@ -323,7 +323,42 @@ impl PartialEq for HoconValue {
         match (self, rhs) {
             (HoconValue::Integer(left), HoconValue::Integer(right)) => left == right,
             (HoconValue::String(left), HoconValue::String(right)) => left == right,
+            (HoconValue::BadValue, HoconValue::BadValue) => true,
             _ => false,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn max_depth_of_include() {
+        let val = dbg!(HoconInternal::from_include(Some("./"), "file.conf", 10));
+        assert_eq!(
+            val,
+            HoconInternal {
+                internal: vec![(
+                    vec![HoconValue::String(String::from("file.conf"))],
+                    HoconValue::BadValue
+                )]
+            }
+        );
+    }
+
+    #[test]
+    fn missing_file_included() {
+        let val = dbg!(HoconInternal::from_include(Some("./"), "file.conf", 1));
+        assert_eq!(
+            val,
+            HoconInternal {
+                internal: vec![(
+                    vec![HoconValue::String(String::from("file.conf"))],
+                    HoconValue::BadValue
+                )]
+            }
+        );
+    }
+
 }
