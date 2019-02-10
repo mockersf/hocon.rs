@@ -35,10 +35,6 @@ impl std::error::Error for Error {
     fn description(&self) -> &str {
         &self.message
     }
-
-    fn cause(&self) -> Option<&std::error::Error> {
-        None
-    }
 }
 
 #[cfg(test)]
@@ -53,6 +49,6 @@ mod tests {
 
         assert_eq!(format!("{}", error), "my error");
         assert_eq!(error.description(), "my error");
-        assert!(error.cause().is_none());
+        assert!(error.source().is_none());
     }
 }
