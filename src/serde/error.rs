@@ -40,3 +40,19 @@ impl std::error::Error for Error {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::de::Error as SerdeError;
+    use std::error::Error as StdError;
+
+    #[test]
+    fn can_display_error() {
+        let error: Error = Error::custom("my error");
+        
+        assert_eq!(format!("{}", error), "my error");
+        assert_eq!(error.description(), "my error");
+        assert!(error.cause().is_none());
+    }
+}
