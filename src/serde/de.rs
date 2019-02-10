@@ -505,41 +505,37 @@ where
 mod tests {
     use serde::Deserialize;
 
+    #[derive(Deserialize, Debug)]
+    struct Simple {
+        int: i64,
+        float: f64,
+        option_int: Option<u64>,
+    }
+    #[derive(Deserialize, Debug)]
+    struct WithSubStruct {
+        vec_sub: Vec<Simple>,
+        int: i32,
+        float: f32,
+        boolean: bool,
+        string: String,
+    }
+
     #[test]
     fn can_deserialize_struct() {
-        #[derive(Deserialize, Debug)]
-        struct Internal {
-            a: i64,
-            b: f64,
-            c: Option<u64>,
-        }
-        #[derive(Deserialize, Debug)]
-        struct Basic {
-            intern: Vec<Internal>,
-            d: i32,
-            e: f32,
-            f: bool,
-            g: String,
-        }
-
-        let doc = r#"{d:56, e:543.12, f:false, g: test, intern:[
-            {a:8,b:1.5,c:1919},
-            {a:8,b:0},
-            {a:1,b:2,c:null},
+        let doc = r#"{int:56, float:543.12, boolean:false, string: test,
+        vec_sub:[
+            {int:8, float:1.5, option_int:1919},
+            {int:8, float:0                   },
+            {int:1, float:2,   option_int:null},
 ]}"#;
 
-        let res: super::Result<Basic> = dbg!(super::from_str(doc));
+        let res: super::Result<WithSubStruct> = dbg!(super::from_str(doc));
         assert!(res.is_ok());
     }
 
     #[test]
     fn will_fail_on_invalid_hocon_in_str() {
-        #[derive(Deserialize, Debug)]
-        struct Simple {
-            a: i32,
-        }
-
-        let doc = r#"{a:5"}"#;
+        let doc = r#"{int:5"}"#;
 
         let res: super::Result<Simple> = dbg!(super::from_str(doc));
         assert!(res.is_err());
@@ -547,12 +543,38 @@ mod tests {
 
     #[test]
     fn will_fail_on_missing_file() {
-        #[derive(Deserialize, Debug)]
-        struct Simple {
-            a: i32,
-        }
-
         let res: super::Result<Simple> = dbg!(super::from_file_path("missing.conf"));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn will_fail_on_missing_field() {
+        let doc = r#"{int:5}"#;
+
+        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn will_not_fail_on_extra_field() {
+        let doc = r#"{int:5, float:6, extra:10}"#;
+
+        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn will_fail_on_wrong_type() {
+        let doc = r#"{int:5, float:wrong}"#;
+        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        assert!(res.is_err());
+
+        let doc = r#"{int:56, float:543.12, boolean:false, string:[], vec_sub:[]}"#;
+        let res: super::Result<WithSubStruct> = dbg!(super::from_str(doc));
+        assert!(res.is_err());
+
+        let doc = r#"{int:56, float:543.12, boolean:1, string:test, vec_sub:[]}"#;
+        let res: super::Result<WithSubStruct> = dbg!(super::from_str(doc));
         assert!(res.is_err());
     }
 
