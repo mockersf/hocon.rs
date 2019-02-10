@@ -528,7 +528,32 @@ mod tests {
             {a:1,b:2,c:null},
 ]}"#;
 
-        let res: super::Result<Basic> = super::from_str(doc);
+        let res: super::Result<Basic> = dbg!(super::from_str(doc));
         assert!(res.is_ok());
     }
+
+    #[test]
+    fn will_fail_on_invalid_hocon_in_str() {
+        #[derive(Deserialize, Debug)]
+        struct Simple {
+            a: i32,
+        }
+
+        let doc = r#"{a:5"}"#;
+
+        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn will_fail_on_missing_file() {
+        #[derive(Deserialize, Debug)]
+        struct Simple {
+            a: i32,
+        }
+
+        let res: super::Result<Simple> = dbg!(super::from_file_path("missing.conf"));
+        assert!(res.is_err());
+    }
+
 }

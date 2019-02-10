@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn max_depth_of_include() {
-        let val = dbg!(HoconInternal::from_include(Some("./"), "file.conf", 10));
+        let val = dbg!(HoconInternal::from_include(Some("./"), "file.conf", 15));
         assert_eq!(
             val,
             HoconInternal {
