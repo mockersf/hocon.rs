@@ -283,10 +283,10 @@ fn parse_empty_objects() {
 
 #[test]
 fn parse_missing_substitution() {
-    let s = r#"a=${?b}"#;
-    let doc = dbg!(Hocon::load_from_str(s).unwrap());
+    let s = r#"{a={c=${?b}}}"#;
+    let doc = dbg!(Hocon::load_from_str(s)).unwrap();
 
-    assert_eq!(doc["a"], Hocon::BadValue);
+    assert_eq!(doc["a"]["c"], Hocon::BadValue);
 }
 
 #[test]
