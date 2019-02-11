@@ -18,23 +18,35 @@ impl HoconInternal {
     }
 
     pub(crate) fn from_object(h: Hash) -> Self {
-        Self { internal: h }
+        if h.len() == 0 {
+            Self {
+                internal: vec![(vec![], HoconValue::EmptyObject)],
+            }
+        } else {
+            Self { internal: h }
+        }
     }
 
     pub(crate) fn from_array(a: Vec<HoconInternal>) -> Self {
-        Self {
-            internal: a
-                .into_iter()
-                .enumerate()
-                .flat_map(|(i, hw)| {
-                    Self {
-                        internal: hw.internal,
-                    }
-                    .add_to_path(vec![HoconValue::Integer(i as i64)])
-                    .internal
+        if a.len() == 0 {
+            Self {
+                internal: vec![(vec![], HoconValue::EmptyArray)],
+            }
+        } else {
+            Self {
+                internal: a
                     .into_iter()
-                })
-                .collect(),
+                    .enumerate()
+                    .flat_map(|(i, hw)| {
+                        Self {
+                            internal: hw.internal,
+                        }
+                        .add_to_path(vec![HoconValue::Integer(i as i64)])
+                        .internal
+                        .into_iter()
+                    })
+                    .collect(),
+            }
         }
     }
 
@@ -86,7 +98,10 @@ impl HoconInternal {
     pub(crate) fn merge(self) -> Result<HoconIntermediate, ()> {
         let root = Rc::new(Child {
             key: HoconValue::BadValue,
-            value: RefCell::new(Node::Node(vec![])),
+            value: RefCell::new(Node::Node {
+                children: vec![],
+                key_hint: None,
+            }),
         });
 
         for (path, item) in self.internal {
@@ -109,7 +124,7 @@ impl HoconInternal {
 
                             (Rc::clone(&new_child), vec![Rc::clone(&new_child)])
                         }
-                        Node::Node(children) => {
+                        Node::Node { children, .. } => {
                             let exist = children.iter().find(|child| child.key == path_item);
                             match exist {
                                 Some(child) => (Rc::clone(child), children.clone()),
@@ -150,7 +165,10 @@ impl HoconInternal {
                             }
                         }
                     };
-                    current_node.value.replace(Node::Node(child_list));
+                    current_node.value.replace(Node::Node {
+                        children: child_list,
+                        key_hint: None,
+                    });
 
                     current_node = target_child;
                 }
@@ -169,25 +187,39 @@ pub(crate) type Path = Vec<HoconValue>;
 pub(crate) type Hash = Vec<(Path, HoconValue)>;
 
 #[derive(Clone, Debug)]
+enum KeyType {
+    Int,
+    String,
+}
+
+#[derive(Clone, Debug)]
 enum Node {
     Leaf(HoconValue),
-    Node(Vec<Rc<Child>>),
+    Node {
+        children: Vec<Rc<Child>>,
+        key_hint: Option<KeyType>,
+    },
 }
 
 impl Node {
     fn finalize(self) -> Hocon {
         match self {
             Node::Leaf(v) => v.finalize(),
-            Node::Node(ref vec) => vec
+            Node::Node {
+                ref children,
+                ref key_hint,
+            } => children
                 .first()
                 .map(|ref first| match first.key {
                     HoconValue::Integer(_) => Hocon::Array(
-                        vec.iter()
+                        children
+                            .iter()
                             .map(|c| c.value.clone().into_inner().finalize())
                             .collect(),
                     ),
                     HoconValue::String(_) => Hocon::Hash(
-                        vec.iter()
+                        children
+                            .iter()
                             .map(|c| {
                                 (
                                     c.key.clone().string_value(),
@@ -199,14 +231,17 @@ impl Node {
                     // Keys should only be integer or strings
                     _ => unreachable!(),
                 })
-                .unwrap_or_else(|| Hocon::Hash(HashMap::new())),
+                .unwrap_or_else(|| match key_hint {
+                    Some(KeyType::Int) => Hocon::Array(vec![]),
+                    Some(KeyType::String) | None => Hocon::Hash(HashMap::new()),
+                }),
         }
     }
 
     fn find_key(&self, path: Vec<HoconValue>) -> Node {
         match (self, &path) {
             (Node::Leaf(_), ref path) if path.is_empty() => self.clone(),
-            (Node::Node(children), _) => {
+            (Node::Node { children, .. }, _) => {
                 let mut iter = path.clone().into_iter();
                 let first = iter.nth(0);
                 let remaining = iter.collect();
@@ -258,6 +293,8 @@ pub(crate) enum HoconValue {
     PathSubstitution(String),
     Null,
     BadValue,
+    EmptyObject,
+    EmptyArray,
 }
 
 impl HoconValue {
@@ -281,9 +318,11 @@ impl HoconValue {
                     .collect::<Vec<String>>()
                     .join(""),
             ),
-            // This case should have been replaced during substitution
+            // This cases should have been replaced during substitution
             // and not exist anymore at this point
             HoconValue::PathSubstitution(_) => unreachable!(),
+            HoconValue::EmptyObject => unreachable!(),
+            HoconValue::EmptyArray => unreachable!(),
         }
     }
 
@@ -302,17 +341,27 @@ impl HoconValue {
                     .map(HoconValue::String)
                     .collect(),
             ),
-            HoconValue::Concat(values) => dbg!(Node::Leaf(HoconValue::Concat(
+            HoconValue::Concat(values) => Node::Leaf(HoconValue::Concat(
                 values
                     .into_iter()
                     .map(|v| v.substitute(&current_tree))
-                    .map(|v| if let Node::Leaf(value) = v {
-                        value
-                    } else {
-                        HoconValue::BadValue
+                    .map(|v| {
+                        if let Node::Leaf(value) = v {
+                            value
+                        } else {
+                            HoconValue::BadValue
+                        }
                     })
-                    .collect::<Vec<_>>()
-            ))),
+                    .collect::<Vec<_>>(),
+            )),
+            HoconValue::EmptyObject => Node::Node {
+                children: vec![],
+                key_hint: Some(KeyType::String),
+            },
+            HoconValue::EmptyArray => Node::Node {
+                children: vec![],
+                key_hint: Some(KeyType::Int),
+            },
             v => Node::Leaf(v),
         }
     }

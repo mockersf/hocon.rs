@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use hocon::Hocon;
 
 #[test]
@@ -285,4 +287,13 @@ fn parse_missing_substitution() {
     let doc = dbg!(Hocon::load_from_str(s).unwrap());
 
     assert_eq!(doc["a"], Hocon::BadValue);
+}
+
+#[test]
+fn parse_empty_object() {
+    let s = r#"a=[{},{}],b=[]"#;
+    let doc = dbg!(Hocon::load_from_str(s).unwrap());
+
+    assert_eq!(doc["a"][0], Hocon::Hash(HashMap::new()));
+    assert_eq!(doc["b"], Hocon::Array(vec![]));
 }
