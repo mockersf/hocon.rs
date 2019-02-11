@@ -18,7 +18,7 @@ impl HoconInternal {
     }
 
     pub(crate) fn from_object(h: Hash) -> Self {
-        if h.len() == 0 {
+        if h.is_empty() {
             Self {
                 internal: vec![(vec![], HoconValue::EmptyObject)],
             }
@@ -28,7 +28,7 @@ impl HoconInternal {
     }
 
     pub(crate) fn from_array(a: Vec<HoconInternal>) -> Self {
-        if a.len() == 0 {
+        if a.is_empty() {
             Self {
                 internal: vec![(vec![], HoconValue::EmptyArray)],
             }
