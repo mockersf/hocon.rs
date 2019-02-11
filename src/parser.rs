@@ -123,7 +123,7 @@ named!(
 
 named!(
     path_substitution<&str>,
-    delimited!(tag!("${"), unquoted_string, char!('}'))
+    delimited!(alt!(tag!("${") | tag!("${?")), unquoted_string, char!('}'))
 );
 
 named_args!(

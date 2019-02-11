@@ -278,3 +278,11 @@ fn parse_empty_objects() {
 
     assert_eq!(doc["b"].as_i64().unwrap(), 5);
 }
+
+#[test]
+fn parse_missing_substitution() {
+    let s = r#"a=${?b}"#;
+    let doc = dbg!(Hocon::load_from_str(s).unwrap());
+
+    assert_eq!(doc["a"], Hocon::BadValue);
+}
