@@ -24,7 +24,8 @@ fn hocon_to_json(hocon: Hocon) -> Option<Value> {
                 .filter_map(|(k, v)| v.map(|v| (k, v)))
                 .collect(),
         )),
-        Hocon::BadValue | Hocon::Null => None,
+        Hocon::Null => Some(Value::Null),
+        Hocon::BadValue => None,
     }
 }
 
