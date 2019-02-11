@@ -11,6 +11,22 @@ pub(crate) struct HoconInternal {
 }
 
 impl HoconInternal {
+    pub(crate) fn from_properties(properties: HashMap<String, String>) -> Self {
+        Self {
+            internal: properties
+                .into_iter()
+                .map(|(path, value)| {
+                    (
+                        path.split(".")
+                            .map(|s| HoconValue::String(String::from(s)))
+                            .collect(),
+                        HoconValue::String(value),
+                    )
+                })
+                .collect(),
+        }
+    }
+
     pub(crate) fn from_value(v: HoconValue) -> Self {
         Self {
             internal: vec![(vec![], v)],
@@ -60,7 +76,7 @@ impl HoconInternal {
             }
         } else if let Ok(included) =
             Hocon::load_file(file_root.expect("file_root is present"), file_path)
-                .and_then(|(p, s)| Hocon::parse_str_to_internal(Some(&p), &s, depth + 1))
+                .and_then(|(cf, s)| Hocon::parse_str_to_internal(Some(&cf.path), &s, depth + 1))
         {
             included
         } else {

@@ -44,9 +44,10 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod internals;
 mod parser;
@@ -75,6 +76,27 @@ pub enum Hocon {
     BadValue,
 }
 
+enum FileType {
+    Properties,
+    Hocon,
+}
+
+struct ConfFileMeta {
+    path: String,
+    file_type: FileType,
+}
+impl ConfFileMeta {
+    fn from_path(path: PathBuf) -> Self {
+        Self {
+            path: String::from(path.parent().and_then(|p| p.to_str()).unwrap_or("")),
+            file_type: match path.extension().and_then(OsStr::to_str) {
+                Some("properties") => FileType::Properties,
+                _ => FileType::Hocon,
+            },
+        }
+    }
+}
+
 impl Hocon {
     pub(crate) fn parse_str_to_internal(
         file_root: Option<&str>,
@@ -88,37 +110,47 @@ impl Hocon {
         )
     }
 
-    pub(crate) fn load_from_str_with_file_root(
-        file_root: Option<&str>,
+    pub(crate) fn load_from_str_of_conf_file(
+        conf_file: Option<ConfFileMeta>,
         s: &str,
         depth: usize,
     ) -> Result<Hocon, ()> {
-        Self::parse_str_to_internal(file_root, s, depth)
-            .and_then(|hocon| hocon.merge())
-            .map(|intermediate| intermediate.finalize())
+        match conf_file {
+            Some(ConfFileMeta {
+                file_type: FileType::Properties,
+                ..
+            }) => java_properties::read(s.as_bytes())
+                .map(internals::HoconInternal::from_properties)
+                .map_err(|_| ()),
+            Some(ConfFileMeta {
+                file_type: FileType::Hocon,
+                path,
+                ..
+            }) => Self::parse_str_to_internal(Some(&path), s, depth),
+            None => Self::parse_str_to_internal(None, s, depth),
+        }
+        .and_then(|hocon| hocon.merge())
+        .map(|intermediate| intermediate.finalize())
     }
 
-    pub(crate) fn load_file(file_root: &str, path: &str) -> Result<(String, String), ()> {
+    pub(crate) fn load_file(file_root: &str, path: &str) -> Result<(ConfFileMeta, String), ()> {
         let full_path = Path::new(file_root).join(path);
         let mut file = File::open(full_path.as_os_str()).map_err(|_| ())?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).map_err(|_| ())?;
-        Ok((
-            String::from(full_path.parent().and_then(|p| p.to_str()).unwrap_or("")),
-            contents,
-        ))
+        Ok((ConfFileMeta::from_path(full_path), contents))
     }
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
     pub fn load_from_str(s: &str) -> Result<Hocon, ()> {
-        Self::load_from_str_with_file_root(None, s, 0)
+        Self::load_from_str_of_conf_file(None, s, 0)
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
     pub fn load_from_file(path: &str) -> Result<Hocon, ()> {
-        let (root, contents) = Self::load_file("", path)?;
-        Self::load_from_str_with_file_root(Some(&root), &contents, 0)
+        let (conf_file, contents) = Self::load_file("", path)?;
+        Self::load_from_str_of_conf_file(Some(conf_file), &contents, 0)
     }
 }
 
@@ -320,6 +352,34 @@ mod tests {
         assert_eq!(Hocon::String(String::from("5.6")).as_i64(), None);
         assert_eq!(Hocon::String(String::from("5")).as_f64(), Some(5.0));
         assert_eq!(Hocon::String(String::from("5")).as_i64(), Some(5));
+    }
+
+    #[test]
+    fn read_from_properties() {
+        let s = r#"a.b:c"#;
+        let doc = dbg!(Hocon::load_from_str_of_conf_file(
+            Some(ConfFileMeta::from_path(std::path::PathBuf::from(
+                "file.properties",
+            ))),
+            s,
+            0,
+        ));
+        assert!(doc.is_ok());
+        assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
+    }
+
+    #[test]
+    fn read_from_hocon() {
+        let s = r#"a.b:c"#;
+        let doc = dbg!(Hocon::load_from_str_of_conf_file(
+            Some(ConfFileMeta::from_path(std::path::PathBuf::from(
+                "file.conf",
+            ))),
+            s,
+            0,
+        ));
+        assert!(doc.is_ok());
+        assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
     }
 
 }
