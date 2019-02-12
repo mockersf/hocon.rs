@@ -232,6 +232,16 @@ enum Node {
 }
 
 impl Node {
+    fn deep_clone(&self) -> Self {
+        match self {
+            Node::Leaf(v) => Node::Leaf(v.clone()),
+            Node::Node { children, key_hint } => Node::Node {
+                children: children.iter().map(|v| Rc::new(v.deep_clone())).collect(),
+                key_hint: key_hint.clone(),
+            },
+        }
+    }
+
     fn finalize(self) -> Hocon {
         match self {
             Node::Leaf(v) => v.finalize(),
@@ -299,6 +309,13 @@ struct Child {
 impl Child {
     fn find_key(&self, path: Vec<HoconValue>) -> Node {
         self.value.clone().into_inner().find_key(path)
+    }
+
+    fn deep_clone(&self) -> Self {
+        Self {
+            key: self.key.clone(),
+            value: RefCell::new(self.value.clone().into_inner().deep_clone()),
+        }
     }
 }
 
@@ -370,12 +387,14 @@ impl HoconValue {
 
     fn substitute(self, current_tree: &Rc<Child>, at_path: &[HoconValue]) -> Node {
         match self {
-            HoconValue::PathSubstitution(path) => current_tree.find_key(
-                path.split('.')
-                    .map(String::from)
-                    .map(HoconValue::String)
-                    .collect(),
-            ),
+            HoconValue::PathSubstitution(path) => current_tree
+                .find_key(
+                    path.split('.')
+                        .map(String::from)
+                        .map(HoconValue::String)
+                        .collect(),
+                )
+                .deep_clone(),
             HoconValue::Concat(values) => Node::Leaf(HoconValue::Concat(
                 values
                     .into_iter()
@@ -427,7 +446,7 @@ impl HoconValue {
                     match current_tree.find_key(fixed_up_path) {
                         Node::Leaf(HoconValue::BadValue) => (),
                         new_value => {
-                            return new_value;
+                            return new_value.deep_clone();
                         }
                     }
                 }
