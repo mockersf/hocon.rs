@@ -4,6 +4,7 @@ set -x
 
 crashes=0
 failed_comp=0
+total=0
 errors=()
 
 rm -rf tmp
@@ -15,6 +16,7 @@ for conf_file in tmp/hocon/*
 do
     if [ -f "$conf_file" ]
     then
+        total=$((total + 1))
         filename=`basename $conf_file`
         cargo run --example hocon2json $conf_file > tmp/output/$filename
         if [ $? -ne 0 ]
@@ -34,7 +36,7 @@ do
     fi
 done
 
-echo "$crashes crashes, $failed_comp failed comparisons"
+echo "$total files : $crashes crashes, $failed_comp failed comparisons"
 echo ${errors[*]}
 
 exit $((crashes + failed_comp))
