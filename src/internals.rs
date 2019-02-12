@@ -17,7 +17,7 @@ impl HoconInternal {
                 .into_iter()
                 .map(|(path, value)| {
                     (
-                        path.split(".")
+                        path.split('.')
                             .map(|s| HoconValue::String(String::from(s)))
                             .collect(),
                         HoconValue::String(value),
