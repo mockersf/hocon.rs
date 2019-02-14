@@ -235,22 +235,21 @@ named!(
 
 named!(
     include<&str>,
-    ws!(do_parse!(
-        tag!("include")
+    do_parse!(
+        tag!("include ")
             >> file_name:
                 sp!(alt!(
                     call!(string)
                         | do_parse!(tag!("file(") >> file_name: string >> tag!(")") >> (file_name))
                 ))
-            >> alt!(opt!(multiline_comment) => { |_| () } | newline => { |_| () })
             >> (file_name)
-    ))
+    )
 );
 
 named_args!(
     root_include<'a>(file_root: Option<&'a str>, depth: usize)<HoconInternal>,
     map!(
-        do_parse!(file_name: include >> doc: call!(root, file_root, depth) >> ((file_name, doc))),
+        do_parse!(file_name: ws!(include) >> doc: call!(root, file_root, depth) >> ((file_name, doc))),
         |(file_name, mut doc)| match file_root {
             Some(root) => doc.add_include(&root, file_name, depth),
             None => doc,

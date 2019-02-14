@@ -1,0 +1,7 @@
+---
+created: "2019-02-14T01:01:32.004533Z"
+creator: insta@0.6.2
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc.unwrap())
+---
+"{a: 1, b: {a: 5, b: 6.7, c: [1, 2, 3], d: true, e: \"val\", f: {g: false}}, c: {a: 5, b: 6.7, c: [1, 2, 3], d: true, e: \"val\", f: {g: false}}, d: 5}"
