@@ -47,7 +47,7 @@ fn snapshot(file_name: &str) {
     let mut file = File::open(file_name).unwrap();
     let mut original_content = String::new();
     file.read_to_string(&mut original_content).unwrap();
-    println!("original file:\n{}", original_content);
+    println!("original file: {}\n{}", file_name, original_content);
 
     assert!(doc.is_ok());
     assert_debug_snapshot_matches!(
