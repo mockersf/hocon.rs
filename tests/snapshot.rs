@@ -1,5 +1,8 @@
 #![cfg(feature = "test-snapshot")]
 
+use std::fs::File;
+use std::io::prelude::*;
+
 use insta::assert_debug_snapshot_matches;
 use test_generator;
 
@@ -40,6 +43,11 @@ fn stable_readable_display(value: &Hocon) -> String {
 
 fn snapshot(file_name: &str) {
     let doc = hocon::Hocon::load_from_file(file_name);
+
+    let mut file = File::open(file_name).unwrap();
+    let mut original_content = String::new();
+    file.read_to_string(&mut original_content).unwrap();
+    println!("original file:\n{}", original_content);
 
     assert!(doc.is_ok());
     assert_debug_snapshot_matches!(
