@@ -337,7 +337,7 @@ pub(crate) enum HoconValue {
     UnquotedString(String),
     Boolean(bool),
     Concat(Vec<HoconValue>),
-    PathSubstitution(String),
+    PathSubstitution(Box<HoconValue>),
     Null,
     BadValue,
     EmptyObject,
@@ -349,6 +349,20 @@ pub(crate) enum HoconValue {
 }
 
 impl HoconValue {
+    fn to_path(&self) -> Vec<HoconValue> {
+        match self {
+            HoconValue::UnquotedString(s) if s == "." => vec![],
+            HoconValue::UnquotedString(s) => s
+                .split('.')
+                .map(String::from)
+                .map(HoconValue::String)
+                .collect(),
+            HoconValue::String(s) => vec![HoconValue::String(s.clone())],
+            HoconValue::Concat(values) => values.iter().flat_map(HoconValue::to_path).collect(),
+            _ => vec![self.clone()],
+        }
+    }
+
     fn finalize(self) -> Hocon {
         match self {
             HoconValue::Null => Hocon::Null,
@@ -387,14 +401,9 @@ impl HoconValue {
 
     fn substitute(self, current_tree: &Rc<Child>, at_path: &[HoconValue]) -> Node {
         match self {
-            HoconValue::PathSubstitution(path) => current_tree
-                .find_key(
-                    path.split('.')
-                        .map(String::from)
-                        .map(HoconValue::String)
-                        .collect(),
-                )
-                .deep_clone(),
+            HoconValue::PathSubstitution(path) => {
+                current_tree.find_key(path.to_path()).deep_clone()
+            }
             HoconValue::Concat(values) => Node::Leaf(HoconValue::Concat(
                 values
                     .into_iter()
@@ -436,13 +445,7 @@ impl HoconValue {
                             _ => vec![HoconValue::BadValue],
                         })
                         .collect::<Vec<_>>();
-                    fixed_up_path.append(
-                        &mut path
-                            .split('.')
-                            .map(String::from)
-                            .map(HoconValue::String)
-                            .collect(),
-                    );
+                    fixed_up_path.append(&mut path.to_path());
                     match current_tree.find_key(fixed_up_path) {
                         Node::Leaf(HoconValue::BadValue) => (),
                         new_value => {

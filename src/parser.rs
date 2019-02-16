@@ -122,8 +122,8 @@ named!(
 );
 
 named!(
-    path_substitution<&str>,
-    delimited!(alt!(tag!("${?") | tag!("${")), unquoted_string, char!('}'))
+    path_substitution<HoconValue>,
+    delimited!(alt!(tag!("${?") | tag!("${")), value, char!('}'))
 );
 
 named_args!(
@@ -209,7 +209,7 @@ named!(
         float   =>           { |f| HoconValue::Real(f)                           } |
         boolean =>           { |b| HoconValue::Boolean(b)                        } |
         null =>              { |_| HoconValue::Null                              } |
-        path_substitution => { |p| HoconValue::PathSubstitution(String::from(p)) } |
+        path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))     } |
         unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s))   }
     ))
 );
