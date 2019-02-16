@@ -41,7 +41,7 @@ macro_rules! sp (
 named!(possible_comment<Option<()>>, opt!(multiline_comment));
 named!(
     multiline_comment<()>,
-    do_parse!(comment >> many0!(alt!(newline => { |_| () } | comment)) >> ())
+    do_parse!(many0!(newline) >> comment >> many0!(alt!(newline => { |_| () } | comment)) >> ())
 );
 named!(
     comment<()>,

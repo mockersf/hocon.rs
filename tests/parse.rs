@@ -297,3 +297,17 @@ fn parse_empty_object() {
     assert_eq!(doc["a"][0], Hocon::Hash(HashMap::new()));
     assert_eq!(doc["b"], Hocon::Array(vec![]));
 }
+
+#[test]
+fn parse_comment_after_object() {
+    let s = r#"{
+    a = {
+        b = 2
+    }
+    # zut
+}
+#zut"#;
+    let doc = dbg!(Hocon::load_from_str(dbg!(s))).unwrap();
+
+    assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
+}
