@@ -217,10 +217,10 @@ fn parse_root_braces_omitted() {
 
 #[test]
 fn parse_unquoted_string() {
-    let s = r#"{"foo" : { b : hello }}"#;
+    let s = r#"{"foo" : { b : hello world }}"#;
     let doc = dbg!(Hocon::load_from_str(s).unwrap());
 
-    assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello");
+    assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello world");
 }
 
 #[test]
