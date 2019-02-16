@@ -3,6 +3,7 @@ use nom::*;
 use std::str;
 
 use crate::internals::{Hash, HoconInternal, HoconValue};
+use crate::HoconLoader;
 
 named!(
     space<()>,
@@ -127,36 +128,36 @@ named!(
 );
 
 named_args!(
-    array<'a>(file_root: Option<&'a str>, depth: usize)<Vec<HoconInternal>>,
+    array<'a>(config: &HoconLoader)<Vec<HoconInternal>>,
     sp!(delimited!(
         do_parse!(char!('[') >> many0!(newline) >> ()),
-        separated_list!(separators, call!(wrapper, file_root, depth)),
+        separated_list!(separators, call!(wrapper, config)),
         call!(closing, ']')
     ))
 );
 
 named_args!(
-    key_value<'a>(file_root: Option<&'a str>, depth: usize)<Hash>,
+    key_value<'a>(config: &HoconLoader)<Hash>,
     do_parse!(
         ws!(possible_comment)
             >> pair: sp!(alt!(
-                call!(include) => { |path| HoconInternal::from_include(file_root, path, depth).internal } |
-                separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, file_root, depth))
+                call!(include) => { |path| HoconInternal::from_include(path, config).internal } |
+                separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
                     => { |(s, h): (&str, HoconInternal)|
                         HoconInternal::from_object(h.internal)
                             .add_to_path(vec![HoconValue::String(String::from(s))]).internal
                     } |
-                pair!(ws!(string), call!(hash, file_root, depth))
+                pair!(ws!(string), call!(hash, config))
                     => { |(s, h): (&str, Hash)|
                         HoconInternal::from_object(h)
                             .add_to_path(vec![HoconValue::String(String::from(s))]).internal
                     } |
-                separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, file_root, depth))
+                separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
                     => { |(s, h): (&str, HoconInternal)|
                         HoconInternal::from_object(h.internal)
                             .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
                     } |
-                pair!(ws!(unquoted_string), call!(hash, file_root, depth))
+                pair!(ws!(unquoted_string), call!(hash, config))
                     => { |(s, h): (&str, Hash)|
                         HoconInternal::from_object(h)
                             .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
@@ -176,8 +177,8 @@ named!(
 );
 
 named_args!(
-    separated_hashlist<'a>(file_root: Option<&'a str>, depth: usize)<Vec<Hash>>,
-    separated_list!(separators, call!(key_value, file_root, depth))
+    separated_hashlist<'a>(config: &HoconLoader)<Vec<Hash>>,
+    separated_list!(separators, call!(key_value, config))
 );
 
 named_args!(
@@ -186,17 +187,17 @@ named_args!(
 );
 
 named_args!(
-    hash<'a>(file_root: Option<&'a str>, depth: usize)<Hash>,
+    hash<'a>(config: &HoconLoader)<Hash>,
     sp!(map!(
-        delimited!(char!('{'), call!(separated_hashlist, file_root, depth), call!(closing, '}')),
+        delimited!(char!('{'), call!(separated_hashlist, config), call!(closing, '}')),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
     ))
 );
 
 named_args!(
-    root_hash<'a>(file_root: Option<&'a str>, depth: usize)<Hash>,
+    root_hash<'a>(config: &HoconLoader)<Hash>,
     sp!(map!(
-        do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, file_root, depth) >> (list)),
+        do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, config) >> (list)),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
     ))
 );
@@ -204,13 +205,13 @@ named_args!(
 named!(
     single_value<HoconValue>,
     sp!(alt!(
-        string  =>           { |s| HoconValue::String(String::from(s))           } |
-        integer =>           { |i| HoconValue::Integer(i)                        } |
-        float   =>           { |f| HoconValue::Real(f)                           } |
-        boolean =>           { |b| HoconValue::Boolean(b)                        } |
-        null =>              { |_| HoconValue::Null                              } |
-        path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))     } |
-        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s))   }
+        string  =>           { |s| HoconValue::String(String::from(s))         } |
+        integer =>           { |i| HoconValue::Integer(i)                      } |
+        float   =>           { |f| HoconValue::Real(f)                         } |
+        boolean =>           { |b| HoconValue::Boolean(b)                      } |
+        null =>              { |_| HoconValue::Null                            } |
+        path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))   } |
+        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) }
     ))
 );
 
@@ -247,42 +248,39 @@ named!(
 );
 
 named_args!(
-    root_include<'a>(file_root: Option<&'a str>, depth: usize)<HoconInternal>,
+    root_include<'a>(config: &HoconLoader)<HoconInternal>,
     map!(
-        do_parse!(file_name: ws!(include) >> doc: call!(root, file_root, depth) >> ((file_name, doc))),
-        |(file_name, mut doc)| match file_root {
-            Some(root) => doc.add_include(&root, file_name, depth),
-            None => doc,
-        }
+        do_parse!(file_name: ws!(include) >> doc: call!(root, config) >> ((file_name, doc))),
+        |(file_name, mut doc)| doc.add_include(file_name, config)
     )
 );
 
 named_args!(
-    wrapper<'a>(file_root: Option<&'a str>, depth: usize)<HoconInternal>,
+    wrapper<'a>(config: &HoconLoader)<HoconInternal>,
     do_parse!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(hash, file_root, depth)  => { |h| HoconInternal::from_object(h)                    } |
-                    call!(array, file_root, depth) => { |a| HoconInternal::from_array(a)                     } |
-                    include                        => { |f| HoconInternal::from_include(file_root, f, depth) } |
-                    value                          => { |v| HoconInternal::from_value(v)                     }
+                    call!(hash, config)  => { |h| HoconInternal::from_object(h)          } |
+                    call!(array, config) => { |a| HoconInternal::from_array(a)           } |
+                    include              => { |f| HoconInternal::from_include(f, config) } |
+                    value                => { |v| HoconInternal::from_value(v)           }
                 )
             >> (wrapped)
     )
 );
 
 named_args!(
-    pub(crate) root<'a>(file_root: Option<&'a str>, depth: usize)<HoconInternal>,
+    pub(crate) root<'a>(config: &HoconLoader)<HoconInternal>,
     do_parse!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(root_include, file_root, depth) => { |d| d                             } |
-                    call!(root_hash, file_root, depth)    => { |h| HoconInternal::from_object(h) } |
-                    call!(hash, file_root, depth)         => { |h| HoconInternal::from_object(h) } |
-                    call!(array, file_root, depth)        => { |a| HoconInternal::from_array(a)  } |
-                    value                                 => { |v| HoconInternal::from_value(v)  }
+                    call!(root_include, config) => { |d| d                             } |
+                    call!(root_hash, config)    => { |h| HoconInternal::from_object(h) } |
+                    call!(hash, config)         => { |h| HoconInternal::from_object(h) } |
+                    call!(array, config)        => { |a| HoconInternal::from_array(a)  } |
+                    value                       => { |v| HoconInternal::from_value(v)  }
                 )
             >> (wrapped)
     )

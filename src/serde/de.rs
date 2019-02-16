@@ -1,7 +1,7 @@
 use serde;
 
 use super::error::{Error, Result};
-use crate::Hocon;
+use crate::{Hocon, HoconLoader};
 
 macro_rules! impl_deserialize_n {
     ($method:ident, $visit:ident) => {
@@ -482,11 +482,11 @@ pub fn from_file_path<'a, T>(file_path: &str) -> Result<T>
 where
     T: serde::de::Deserialize<'a>,
 {
-    from_trait(HoconRead::new(Hocon::load_from_file(file_path).map_err(
-        |_| Error {
+    from_trait(HoconRead::new(
+        HoconLoader::load_from_file(file_path).map_err(|_| Error {
             message: format!("Couldn't parse file '{}' as a HOCON document", file_path),
-        },
-    )?))
+        })?,
+    ))
 }
 
 /// Deserialize an instance of type `T` from an HOCON document in `str`
@@ -494,7 +494,7 @@ pub fn from_str<'a, T>(hocon: &str) -> Result<T>
 where
     T: serde::de::Deserialize<'a>,
 {
-    from_trait(HoconRead::new(Hocon::load_from_str(hocon).map_err(
+    from_trait(HoconRead::new(HoconLoader::load_from_str(hocon).map_err(
         |_| Error {
             message: format!("Couldn't parse '{}' as a HOCON document", hocon),
         },

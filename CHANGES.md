@@ -1,5 +1,10 @@
 # Changes
 
+## 0.2.0
+
+* better coverage of HOCON specs
+* `HoconLoader` object to allow for parsing configuration
+
 ## 0.1.1
 
 * support `null` value in hocon

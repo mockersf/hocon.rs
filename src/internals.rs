@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use super::Hocon;
+use super::{Hocon, HoconLoader};
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct HoconInternal {
@@ -66,17 +66,27 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn from_include(file_root: Option<&str>, file_path: &str, depth: usize) -> Self {
-        if depth > 10 || file_root.is_none() {
+    pub(crate) fn from_include(file_path: &str, config: &HoconLoader) -> Self {
+        if config.include_depth > 10 || config.file_meta.is_none() {
             Self {
                 internal: vec![(
                     vec![HoconValue::String(String::from(file_path))],
                     HoconValue::BadValue,
                 )],
             }
-        } else if let Ok(included) =
-            Hocon::load_file(file_root.expect("file_root is present"), file_path)
-                .and_then(|(cf, s)| Hocon::parse_str_to_internal(Some(&cf.path), &s, depth + 1))
+        } else if let Ok(included) = HoconLoader::load_file(
+            config
+                .file_meta
+                .clone()
+                .unwrap()
+                .path
+                .as_os_str()
+                .to_str()
+                .unwrap(),
+            file_path,
+            config.include_depth + 1,
+        )
+        .and_then(|(cf, s)| cf.parse_str_to_internal(&s))
         {
             Self {
                 internal: included
@@ -103,8 +113,8 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn add_include(&mut self, file_root: &str, file_path: &str, depth: usize) -> Self {
-        let mut included = Self::from_include(Some(file_root), file_path, depth);
+    pub(crate) fn add_include(&mut self, file_path: &str, config: &HoconLoader) -> Self {
+        let mut included = Self::from_include(file_path, config);
 
         included.internal.append(&mut self.internal);
 
@@ -477,7 +487,16 @@ mod tests {
 
     #[test]
     fn max_depth_of_include() {
-        let val = dbg!(HoconInternal::from_include(Some("./"), "file.conf", 15));
+        let val = dbg!(HoconInternal::from_include(
+            "file.conf",
+            &HoconLoader {
+                include_depth: 15,
+                file_meta: Some(crate::ConfFileMeta {
+                    file_type: crate::FileType::Hocon,
+                    path: std::path::Path::new("").to_path_buf()
+                })
+            }
+        ));
         assert_eq!(
             val,
             HoconInternal {
@@ -491,7 +510,16 @@ mod tests {
 
     #[test]
     fn missing_file_included() {
-        let val = dbg!(HoconInternal::from_include(Some("./"), "file.conf", 1));
+        let val = dbg!(HoconInternal::from_include(
+            "file.conf",
+            &HoconLoader {
+                include_depth: 5,
+                file_meta: Some(crate::ConfFileMeta {
+                    file_type: crate::FileType::Hocon,
+                    path: std::path::Path::new("").to_path_buf()
+                })
+            }
+        ));
         assert_eq!(
             val,
             HoconInternal {
