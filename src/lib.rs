@@ -19,7 +19,7 @@
 //! use hocon::HoconLoader;
 //!
 //! let s = r#"{"a":5}"#;
-//! let doc = HoconLoader::load_from_str(s).unwrap();
+//! let doc = HoconLoader::new().load_from_str(s).unwrap();
 //! let a = doc["a"].as_i64();
 //! ```
 //!
@@ -85,16 +85,20 @@ pub(crate) enum FileType {
 #[derive(Debug, Clone)]
 pub(crate) struct ConfFileMeta {
     path: PathBuf,
+    file_name: String,
+    full_path: PathBuf,
     file_type: FileType,
 }
 impl ConfFileMeta {
     fn from_path(path: PathBuf) -> Self {
-        let file = path.file_name().unwrap();
+        let file = path.file_name().unwrap().to_str().unwrap();
         let mut parent_path = path.clone();
         parent_path.pop();
 
         Self {
             path: parent_path,
+            file_name: String::from(file),
+            full_path: path.clone(),
             file_type: match Path::new(file).extension().and_then(OsStr::to_str) {
                 Some("properties") => FileType::Properties,
                 _ => FileType::Hocon,
@@ -108,9 +112,53 @@ impl ConfFileMeta {
 pub struct HoconLoader {
     include_depth: usize,
     file_meta: Option<ConfFileMeta>,
+    system: bool,
+}
+
+impl Default for HoconLoader {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HoconLoader {
+    /// New default `HoconLoader`
+    pub fn new() -> Self {
+        Self {
+            include_depth: 0,
+            file_meta: None,
+            system: true,
+        }
+    }
+
+    /// Disable System environment substitutions
+    pub fn no_system(&self) -> Self {
+        Self {
+            system: false,
+            ..self.clone()
+        }
+    }
+
+    pub(crate) fn included_from(&self) -> HoconLoader {
+        Self {
+            include_depth: self.include_depth + 1,
+            ..self.clone()
+        }
+    }
+
+    pub(crate) fn with_file(&self, path: PathBuf) -> Self {
+        match self.file_meta.as_ref() {
+            Some(file_meta) => Self {
+                file_meta: Some(ConfFileMeta::from_path(file_meta.clone().path.join(path))),
+                ..self.clone()
+            },
+            None => Self {
+                file_meta: Some(ConfFileMeta::from_path(path)),
+                ..self.clone()
+            },
+        }
+    }
+
     pub(crate) fn parse_str_to_internal(&self, s: &str) -> Result<internals::HoconInternal, ()> {
         Ok(parser::root(format!("{}\n\0", s).as_bytes(), self)
             .map_err(|_| ())?
@@ -128,41 +176,30 @@ impl HoconLoader {
             _ => self.parse_str_to_internal(s),
         }
         .and_then(|hocon| hocon.merge())
-        .map(|intermediate| intermediate.finalize())
+        .map(|intermediate| intermediate.finalize(self))
     }
 
-    pub(crate) fn load_file(
-        file_root: &str,
-        path: &str,
-        depth: usize,
-    ) -> Result<(Self, String), ()> {
-        let full_path = Path::new(file_root).join(path);
-        let mut file = File::open(full_path.as_os_str()).map_err(|_| ())?;
+    pub(crate) fn load_file(&self) -> Result<String, ()> {
+        // let full_path = self.file_meta.clone().unwrap().path.as_path().join(path);
+        let full_path = self.file_meta.clone().unwrap().full_path;
+        let mut file = File::open(dbg!(full_path.as_os_str())).map_err(|_| ())?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).map_err(|_| ())?;
-        Ok((
-            Self {
-                include_depth: depth,
-                file_meta: Some(ConfFileMeta::from_path(full_path)),
-            },
-            contents,
-        ))
+        Ok(contents)
     }
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
-    pub fn load_from_str(s: &str) -> Result<Hocon, ()> {
-        let conf = Self {
-            include_depth: 0,
-            file_meta: None,
-        };
-        conf.load_from_str_of_conf_file(s)
+    pub fn load_from_str(&self, s: &str) -> Result<Hocon, ()> {
+        self.load_from_str_of_conf_file(s)
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
-    pub fn load_from_file(path: &str) -> Result<Hocon, ()> {
-        let (conf, contents) = Self::load_file("", path, 0)?;
-        conf.load_from_str_of_conf_file(&contents)
+    pub fn load_from_file(&self, path: &str) -> Result<Hocon, ()> {
+        let file_path = Path::new(path).to_path_buf();
+        let conf = self.with_file(file_path);
+        let contents = conf.load_file()?;
+        conf.load_from_str(&contents)
     }
 }
 
@@ -373,9 +410,10 @@ mod tests {
             include_depth: 0,
             file_meta: Some(ConfFileMeta::from_path(
                 Path::new("file.properties").to_path_buf()
-            ))
+            )),
+            system: true,
         }
-        .load_from_str_of_conf_file(s,));
+        .load_from_str_of_conf_file(s));
         assert!(doc.is_ok());
         assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
     }
@@ -387,9 +425,10 @@ mod tests {
             include_depth: 0,
             file_meta: Some(ConfFileMeta::from_path(
                 Path::new("file.conf").to_path_buf()
-            ))
+            )),
+            system: true,
         }
-        .load_from_str_of_conf_file(s,));
+        .load_from_str_of_conf_file(s));
         assert!(doc.is_ok());
         assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
     }

@@ -483,9 +483,11 @@ where
     T: serde::de::Deserialize<'a>,
 {
     from_trait(HoconRead::new(
-        HoconLoader::load_from_file(file_path).map_err(|_| Error {
-            message: format!("Couldn't parse file '{}' as a HOCON document", file_path),
-        })?,
+        HoconLoader::new()
+            .load_from_file(file_path)
+            .map_err(|_| Error {
+                message: format!("Couldn't parse file '{}' as a HOCON document", file_path),
+            })?,
     ))
 }
 
@@ -494,11 +496,11 @@ pub fn from_str<'a, T>(hocon: &str) -> Result<T>
 where
     T: serde::de::Deserialize<'a>,
 {
-    from_trait(HoconRead::new(HoconLoader::load_from_str(hocon).map_err(
-        |_| Error {
+    from_trait(HoconRead::new(
+        HoconLoader::new().load_from_str(hocon).map_err(|_| Error {
             message: format!("Couldn't parse '{}' as a HOCON document", hocon),
-        },
-    )?))
+        })?,
+    ))
 }
 
 #[cfg(test)]

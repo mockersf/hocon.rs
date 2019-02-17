@@ -74,20 +74,14 @@ impl HoconInternal {
                     HoconValue::BadValue,
                 )],
             }
-        } else if let Ok(included) = HoconLoader::load_file(
-            config
-                .file_meta
-                .clone()
-                .unwrap()
-                .path
-                .as_os_str()
-                .to_str()
-                .unwrap(),
-            file_path,
-            config.include_depth + 1,
-        )
-        .and_then(|(cf, s)| cf.parse_str_to_internal(&s))
-        {
+        } else if let Ok(included) = {
+            let include_loader = config
+                .included_from()
+                .with_file(std::path::Path::new(file_path).to_path_buf());
+            include_loader
+                .load_file()
+                .and_then(|s| include_loader.parse_str_to_internal(&s))
+        } {
             Self {
                 internal: included
                     .internal
@@ -252,9 +246,9 @@ impl Node {
         }
     }
 
-    fn finalize(self, root: &HoconIntermediate) -> Hocon {
+    fn finalize(self, root: &HoconIntermediate, config: &HoconLoader) -> Hocon {
         match self {
-            Node::Leaf(v) => v.finalize(root),
+            Node::Leaf(v) => v.finalize(root, config),
             Node::Node {
                 ref children,
                 ref key_hint,
@@ -264,7 +258,7 @@ impl Node {
                     HoconValue::Integer(_) => Hocon::Array(
                         children
                             .iter()
-                            .map(|c| c.value.clone().into_inner().finalize(root))
+                            .map(|c| c.value.clone().into_inner().finalize(root, config))
                             .collect(),
                     ),
                     HoconValue::String(_) => Hocon::Hash(
@@ -273,7 +267,7 @@ impl Node {
                             .map(|c| {
                                 (
                                     c.key.clone().string_value(),
-                                    c.value.clone().into_inner().finalize(root),
+                                    c.value.clone().into_inner().finalize(root, config),
                                 )
                             })
                             .collect(),
@@ -335,9 +329,9 @@ pub(crate) struct HoconIntermediate {
 }
 
 impl HoconIntermediate {
-    pub(crate) fn finalize(self) -> Hocon {
+    pub(crate) fn finalize(self, config: &HoconLoader) -> Hocon {
         let refself = &self.clone();
-        self.tree.finalize(refself)
+        self.tree.finalize(refself, config)
     }
 }
 
@@ -375,7 +369,7 @@ impl HoconValue {
         }
     }
 
-    fn finalize(self, root: &HoconIntermediate) -> Hocon {
+    fn finalize(self, root: &HoconIntermediate, config: &HoconLoader) -> Hocon {
         match self {
             HoconValue::Null => Hocon::Null,
             HoconValue::BadValue => Hocon::BadValue,
@@ -385,19 +379,36 @@ impl HoconValue {
             HoconValue::String(s) => Hocon::String(s),
             HoconValue::UnquotedString(s) => Hocon::String(s),
             HoconValue::Concat(ref value) if value.len() == 1 => {
-                value.clone().pop().unwrap().finalize(root)
+                value.clone().pop().unwrap().finalize(root, config)
             }
             HoconValue::Concat(values) => Hocon::String(
                 values
                     .into_iter()
-                    .map(|v| v.finalize(root))
+                    .map(|v| v.finalize(root, config))
                     .filter_map(|v| v.as_string())
                     .collect::<Vec<String>>()
                     .join(""),
             ),
             HoconValue::PathSubstitution(v) => {
                 // second pass for substitution
-                root.tree.find_key(v.to_path()).finalize(root)
+                let path = v.to_path();
+                match (
+                    config.system,
+                    root.tree.find_key(path.clone()).finalize(root, config),
+                ) {
+                    (true, Hocon::BadValue) => {
+                        match std::env::var(
+                            path.into_iter()
+                                .map(HoconValue::string_value)
+                                .collect::<Vec<_>>()
+                                .join("."),
+                        ) {
+                            Ok(val) => Hocon::String(val),
+                            Err(_) => Hocon::BadValue,
+                        }
+                    }
+                    (_, v) => v,
+                }
             }
             // This cases should have been replaced during substitution
             // and not exist anymore at this point
@@ -410,7 +421,11 @@ impl HoconValue {
     fn string_value(self) -> String {
         match self {
             HoconValue::String(s) => s,
-            _ => unreachable!(),
+            HoconValue::Null => String::from("null"),
+            v => {
+                dbg!(v);
+                unreachable!()
+            }
         }
     }
 
@@ -493,10 +508,10 @@ mod tests {
             "file.conf",
             &HoconLoader {
                 include_depth: 15,
-                file_meta: Some(crate::ConfFileMeta {
-                    file_type: crate::FileType::Hocon,
-                    path: std::path::Path::new("").to_path_buf()
-                })
+                file_meta: Some(crate::ConfFileMeta::from_path(
+                    std::path::Path::new("file.conf").to_path_buf()
+                )),
+                system: true,
             }
         ));
         assert_eq!(
@@ -516,10 +531,10 @@ mod tests {
             "file.conf",
             &HoconLoader {
                 include_depth: 5,
-                file_meta: Some(crate::ConfFileMeta {
-                    file_type: crate::FileType::Hocon,
-                    path: std::path::Path::new("").to_path_buf()
-                })
+                file_meta: Some(crate::ConfFileMeta::from_path(
+                    std::path::Path::new("file.conf").to_path_buf()
+                )),
+                system: true,
             }
         ));
         assert_eq!(
