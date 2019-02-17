@@ -1,8 +1,6 @@
-//! Deserialization module using serde
-
 mod de;
 
 pub mod error;
 
-pub use de::{from_file_path, from_str};
+pub(crate) use de::from_hocon;
 pub use error::Error;

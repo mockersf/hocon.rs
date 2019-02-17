@@ -3,14 +3,24 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use super::{Hocon, HoconLoader};
+use super::{Hocon, HoconLoaderConfig};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) struct HoconInternal {
     pub(crate) internal: Hash,
 }
 
 impl HoconInternal {
+    pub(crate) fn empty() -> Self {
+        Self { internal: vec![] }
+    }
+
+    pub(crate) fn add(&self, other: HoconInternal) -> Self {
+        let mut elems = self.internal.clone();
+        elems.append(&mut other.internal.clone());
+        Self { internal: elems }
+    }
+
     pub(crate) fn from_properties(properties: HashMap<String, String>) -> Self {
         Self {
             internal: properties
@@ -66,7 +76,7 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn from_include(file_path: &str, config: &HoconLoader) -> Self {
+    pub(crate) fn from_include(file_path: &str, config: &HoconLoaderConfig) -> Self {
         if config.include_depth > 10 || config.file_meta.is_none() {
             Self {
                 internal: vec![(
@@ -75,12 +85,12 @@ impl HoconInternal {
                 )],
             }
         } else if let Ok(included) = {
-            let include_loader = config
+            let include_config = config
                 .included_from()
                 .with_file(std::path::Path::new(file_path).to_path_buf());
-            include_loader
-                .load_file()
-                .and_then(|s| include_loader.parse_str_to_internal(&s))
+            include_config
+                .read_file()
+                .and_then(|s| include_config.parse_str_to_internal(&s))
         } {
             Self {
                 internal: included
@@ -107,7 +117,7 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn add_include(&mut self, file_path: &str, config: &HoconLoader) -> Self {
+    pub(crate) fn add_include(&mut self, file_path: &str, config: &HoconLoaderConfig) -> Self {
         let mut included = Self::from_include(file_path, config);
 
         included.internal.append(&mut self.internal);
@@ -246,7 +256,7 @@ impl Node {
         }
     }
 
-    fn finalize(self, root: &HoconIntermediate, config: &HoconLoader) -> Hocon {
+    fn finalize(self, root: &HoconIntermediate, config: &HoconLoaderConfig) -> Hocon {
         match self {
             Node::Leaf(v) => v.finalize(root, config),
             Node::Node {
@@ -329,7 +339,7 @@ pub(crate) struct HoconIntermediate {
 }
 
 impl HoconIntermediate {
-    pub(crate) fn finalize(self, config: &HoconLoader) -> Hocon {
+    pub(crate) fn finalize(self, config: &HoconLoaderConfig) -> Hocon {
         let refself = &self.clone();
         self.tree.finalize(refself, config)
     }
@@ -369,7 +379,7 @@ impl HoconValue {
         }
     }
 
-    fn finalize(self, root: &HoconIntermediate, config: &HoconLoader) -> Hocon {
+    fn finalize(self, root: &HoconIntermediate, config: &HoconLoaderConfig) -> Hocon {
         match self {
             HoconValue::Null => Hocon::Null,
             HoconValue::BadValue => Hocon::BadValue,
@@ -422,10 +432,7 @@ impl HoconValue {
         match self {
             HoconValue::String(s) => s,
             HoconValue::Null => String::from("null"),
-            v => {
-                dbg!(v);
-                unreachable!()
-            }
+            _ => unreachable!(),
         }
     }
 
@@ -506,12 +513,12 @@ mod tests {
     fn max_depth_of_include() {
         let val = dbg!(HoconInternal::from_include(
             "file.conf",
-            &HoconLoader {
+            &HoconLoaderConfig {
                 include_depth: 15,
                 file_meta: Some(crate::ConfFileMeta::from_path(
                     std::path::Path::new("file.conf").to_path_buf()
                 )),
-                system: true,
+                ..Default::default()
             }
         ));
         assert_eq!(
@@ -529,12 +536,12 @@ mod tests {
     fn missing_file_included() {
         let val = dbg!(HoconInternal::from_include(
             "file.conf",
-            &HoconLoader {
+            &HoconLoaderConfig {
                 include_depth: 5,
                 file_meta: Some(crate::ConfFileMeta::from_path(
                     std::path::Path::new("file.conf").to_path_buf()
                 )),
-                system: true,
+                ..Default::default()
             }
         ));
         assert_eq!(

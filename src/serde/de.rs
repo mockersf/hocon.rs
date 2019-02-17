@@ -1,7 +1,7 @@
 use serde;
 
 use super::error::{Error, Result};
-use crate::{Hocon, HoconLoader};
+use crate::Hocon;
 
 macro_rules! impl_deserialize_n {
     ($method:ident, $visit:ident) => {
@@ -81,6 +81,7 @@ macro_rules! impl_deserialize_f {
 enum Index {
     String(String),
     Number(usize),
+    Root,
     None,
 }
 
@@ -102,7 +103,7 @@ impl Read for HoconRead {
                 Hocon::BadValue => None,
                 v => Some(v),
             },
-
+            Index::Root => Some(&self.hocon),
             _ => None,
         }
     }
@@ -477,35 +478,18 @@ where
     Ok(value)
 }
 
-/// Deserialize an instance of type `T` from an HOCON document at `file_path`
-pub fn from_file_path<'a, T>(file_path: &str) -> Result<T>
+pub(crate) fn from_hocon<'de, T>(hocon: Hocon) -> Result<T>
 where
-    T: serde::de::Deserialize<'a>,
+    T: serde::de::Deserialize<'de>,
 {
-    from_trait(HoconRead::new(
-        HoconLoader::new()
-            .load_from_file(file_path)
-            .map_err(|_| Error {
-                message: format!("Couldn't parse file '{}' as a HOCON document", file_path),
-            })?,
-    ))
-}
-
-/// Deserialize an instance of type `T` from an HOCON document in `str`
-pub fn from_str<'a, T>(hocon: &str) -> Result<T>
-where
-    T: serde::de::Deserialize<'a>,
-{
-    from_trait(HoconRead::new(
-        HoconLoader::new().load_from_str(hocon).map_err(|_| Error {
-            message: format!("Couldn't parse '{}' as a HOCON document", hocon),
-        })?,
-    ))
+    from_trait(HoconRead::new(hocon))
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::Hocon;
     use serde::Deserialize;
+    use std::collections::HashMap;
 
     #[derive(Deserialize, Debug)]
     struct Simple {
@@ -524,59 +508,85 @@ mod tests {
 
     #[test]
     fn can_deserialize_struct() {
-        let doc = r#"{int:56, float:543.12, boolean:false, string: test,
-        vec_sub:[
-            {int:8, float:1.5, option_int:1919},
-            {int:8, float:0                   },
-            {int:1, float:2,   option_int:null},
-]}"#;
+        let mut hm = HashMap::new();
+        hm.insert(String::from("int"), Hocon::Integer(56));
+        hm.insert(String::from("float"), Hocon::Real(543.12));
+        hm.insert(String::from("boolean"), Hocon::Boolean(false));
+        hm.insert(String::from("string"), Hocon::String(String::from("test")));
+        let mut vec_sub = vec![];
+        let mut subhm = HashMap::new();
+        subhm.insert(String::from("int"), Hocon::Integer(5));
+        subhm.insert(String::from("float"), Hocon::Integer(6));
+        subhm.insert(String::from("extra"), Hocon::Integer(10));
+        let subdoc = Hocon::Hash(subhm);
+        vec_sub.push(subdoc);
+        let mut subhm = HashMap::new();
+        subhm.insert(String::from("int"), Hocon::Integer(5));
+        subhm.insert(String::from("float"), Hocon::Integer(6));
+        let subdoc = Hocon::Hash(subhm);
+        vec_sub.push(subdoc);
+        let mut subhm = HashMap::new();
+        subhm.insert(String::from("int"), Hocon::Integer(5));
+        subhm.insert(String::from("float"), Hocon::Integer(6));
+        subhm.insert(String::from("extra"), Hocon::Null);
+        let subdoc = Hocon::Hash(subhm);
+        vec_sub.push(subdoc);
+        hm.insert(String::from("vec_sub"), Hocon::Array(vec_sub));
+        let doc = Hocon::Hash(hm);
 
-        let res: super::Result<WithSubStruct> = dbg!(super::from_str(doc));
+        let res: super::Result<WithSubStruct> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
     }
 
     #[test]
-    fn will_fail_on_invalid_hocon_in_str() {
-        let doc = r#"{int:5"}"#;
-
-        let res: super::Result<Simple> = dbg!(super::from_str(doc));
-        assert!(res.is_err());
-    }
-
-    #[test]
-    fn will_fail_on_missing_file() {
-        let res: super::Result<Simple> = dbg!(super::from_file_path("missing.conf"));
-        assert!(res.is_err());
-    }
-
-    #[test]
     fn will_fail_on_missing_field() {
-        let doc = r#"{int:5}"#;
+        let mut hm = HashMap::new();
+        hm.insert(String::from("int"), Hocon::Integer(5));
+        let doc = Hocon::Hash(hm);
 
-        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        let res: super::Result<Simple> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
     }
 
     #[test]
     fn will_not_fail_on_extra_field() {
-        let doc = r#"{int:5, float:6, extra:10}"#;
+        let mut hm = HashMap::new();
+        hm.insert(String::from("int"), Hocon::Integer(5));
+        hm.insert(String::from("float"), Hocon::Integer(6));
+        hm.insert(String::from("extra"), Hocon::Integer(10));
+        let doc = Hocon::Hash(hm);
 
-        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        let res: super::Result<Simple> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
     }
 
     #[test]
     fn will_fail_on_wrong_type() {
-        let doc = r#"{int:5, float:wrong}"#;
-        let res: super::Result<Simple> = dbg!(super::from_str(doc));
+        let mut hm = HashMap::new();
+        hm.insert(String::from("int"), Hocon::Integer(5));
+        hm.insert(String::from("float"), Hocon::String(String::from("wrong")));
+        let doc = Hocon::Hash(hm);
+        let res: super::Result<Simple> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
 
-        let doc = r#"{int:56, float:543.12, boolean:false, string:[], vec_sub:[]}"#;
-        let res: super::Result<WithSubStruct> = dbg!(super::from_str(doc));
+        let mut hm = HashMap::new();
+        hm.insert(String::from("int"), Hocon::Integer(56));
+        hm.insert(String::from("float"), Hocon::Real(543.12));
+        hm.insert(String::from("boolean"), Hocon::Boolean(false));
+        hm.insert(String::from("string"), Hocon::Array(vec![]));
+        hm.insert(String::from("vec_sub"), Hocon::Array(vec![]));
+        let doc = Hocon::Hash(hm);
+        let res: super::Result<WithSubStruct> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
 
-        let doc = r#"{int:56, float:543.12, boolean:1, string:test, vec_sub:[]}"#;
-        let res: super::Result<WithSubStruct> = dbg!(super::from_str(doc));
+        let mut hm = HashMap::new();
+        hm.insert(String::from("int"), Hocon::Integer(56));
+        hm.insert(String::from("float"), Hocon::Real(543.12));
+        hm.insert(String::from("boolean"), Hocon::Integer(1));
+        hm.insert(String::from("string"), Hocon::String(String::from("test")));
+        hm.insert(String::from("vec_sub"), Hocon::Array(vec![]));
+        let doc = Hocon::Hash(hm);
+        let res: super::Result<WithSubStruct> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
     }
 

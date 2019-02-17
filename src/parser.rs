@@ -3,7 +3,7 @@ use nom::*;
 use std::str;
 
 use crate::internals::{Hash, HoconInternal, HoconValue};
-use crate::HoconLoader;
+use crate::HoconLoaderConfig;
 
 named!(
     space<()>,
@@ -128,7 +128,7 @@ named!(
 );
 
 named_args!(
-    array<'a>(config: &HoconLoader)<Vec<HoconInternal>>,
+    array<'a>(config: &HoconLoaderConfig)<Vec<HoconInternal>>,
     sp!(delimited!(
         do_parse!(char!('[') >> many0!(newline) >> ()),
         separated_list!(separators, call!(wrapper, config)),
@@ -137,7 +137,7 @@ named_args!(
 );
 
 named_args!(
-    key_value<'a>(config: &HoconLoader)<Hash>,
+    key_value<'a>(config: &HoconLoaderConfig)<Hash>,
     do_parse!(
         ws!(possible_comment)
             >> pair: sp!(alt!(
@@ -177,7 +177,7 @@ named!(
 );
 
 named_args!(
-    separated_hashlist<'a>(config: &HoconLoader)<Vec<Hash>>,
+    separated_hashlist<'a>(config: &HoconLoaderConfig)<Vec<Hash>>,
     separated_list!(separators, call!(key_value, config))
 );
 
@@ -187,7 +187,7 @@ named_args!(
 );
 
 named_args!(
-    hash<'a>(config: &HoconLoader)<Hash>,
+    hash<'a>(config: &HoconLoaderConfig)<Hash>,
     sp!(map!(
         delimited!(char!('{'), call!(separated_hashlist, config), call!(closing, '}')),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
@@ -195,7 +195,7 @@ named_args!(
 );
 
 named_args!(
-    root_hash<'a>(config: &HoconLoader)<Hash>,
+    root_hash<'a>(config: &HoconLoaderConfig)<Hash>,
     sp!(map!(
         do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, config) >> (list)),
         |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
@@ -248,7 +248,7 @@ named!(
 );
 
 named_args!(
-    root_include<'a>(config: &HoconLoader)<HoconInternal>,
+    root_include<'a>(config: &HoconLoaderConfig)<HoconInternal>,
     map!(
         do_parse!(file_name: ws!(include) >> doc: call!(root, config) >> ((file_name, doc))),
         |(file_name, mut doc)| doc.add_include(file_name, config)
@@ -256,7 +256,7 @@ named_args!(
 );
 
 named_args!(
-    wrapper<'a>(config: &HoconLoader)<HoconInternal>,
+    wrapper<'a>(config: &HoconLoaderConfig)<HoconInternal>,
     do_parse!(
         possible_comment
             >> wrapped:
@@ -271,7 +271,7 @@ named_args!(
 );
 
 named_args!(
-    pub(crate) root<'a>(config: &HoconLoader)<HoconInternal>,
+    pub(crate) root<'a>(config: &HoconLoaderConfig)<HoconInternal>,
     do_parse!(
         possible_comment
             >> wrapped:

@@ -8,14 +8,14 @@ The API docs for the master branch are published [here](https://mockersf.github.
 
 ```rust
 let s = r#"{"a":5}"#;
-let doc = HoconLoader::load_from_str(s).unwrap();
+let doc: Hocon = HoconLoader::from_str(s).unwrap();
 
 assert_eq!(doc["a"].as_i64().unwrap(), 5);
 ```
 
 ```rust
 let s = r#"{"b":5, "b":10}"#;
-let doc = HoconLoader::load_from_str(s).unwrap();
+let doc: Hocon = HoconLoader::from_str(s).unwrap();
 
 assert_eq!(doc["b"].as_i64().unwrap(), 10);
 ```

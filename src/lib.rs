@@ -19,7 +19,7 @@
 //! use hocon::HoconLoader;
 //!
 //! let s = r#"{"a":5}"#;
-//! let doc = HoconLoader::new().load_from_str(s).unwrap();
+//! let doc = HoconLoader::new().load_str(s).unwrap().hocon().unwrap();
 //! let a = doc["a"].as_i64();
 //! ```
 //!
@@ -27,6 +27,8 @@
 //!
 //! ```rust
 //! use serde::Deserialize;
+//!
+//! use hocon::HoconLoader;
 //!
 //! #[derive(Deserialize)]
 //! struct Configuration {
@@ -37,7 +39,7 @@
 //!
 //! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
 //!
-//! let conf: Configuration = hocon::serde::from_str(s).unwrap();
+//! let conf: Configuration = HoconLoader::new().load_str(s).unwrap().resolve().unwrap();
 //!  ````
 //!
 
@@ -51,8 +53,8 @@ mod parser;
 mod value;
 pub use value::Hocon;
 
-// #[cfg(feature = "serde-support")]
-pub mod serde;
+#[cfg(feature = "serde-support")]
+mod serde;
 
 #[derive(Debug, Clone)]
 pub(crate) enum FileType {
@@ -85,39 +87,25 @@ impl ConfFileMeta {
     }
 }
 
-/// Helper to load an HOCON file
 #[derive(Debug, Clone)]
-pub struct HoconLoader {
+struct HoconLoaderConfig {
     include_depth: usize,
     file_meta: Option<ConfFileMeta>,
     system: bool,
 }
 
-impl Default for HoconLoader {
+impl Default for HoconLoaderConfig {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl HoconLoader {
-    /// New default `HoconLoader`
-    pub fn new() -> Self {
         Self {
             include_depth: 0,
             file_meta: None,
             system: true,
         }
     }
+}
 
-    /// Disable System environment substitutions
-    pub fn no_system(&self) -> Self {
-        Self {
-            system: false,
-            ..self.clone()
-        }
-    }
-
-    pub(crate) fn included_from(&self) -> HoconLoader {
+impl HoconLoaderConfig {
+    pub(crate) fn included_from(&self) -> Self {
         Self {
             include_depth: self.include_depth + 1,
             ..self.clone()
@@ -143,43 +131,98 @@ impl HoconLoader {
             .1)
     }
 
-    pub(crate) fn load_from_str_of_conf_file(&self, s: &str) -> Result<Hocon, ()> {
-        match self.file_meta {
-            Some(ConfFileMeta {
-                file_type: FileType::Properties,
-                ..
-            }) => java_properties::read(s.as_bytes())
-                .map(internals::HoconInternal::from_properties)
-                .map_err(|_| ()),
-            _ => self.parse_str_to_internal(s),
-        }
-        .and_then(|hocon| hocon.merge())
-        .map(|intermediate| intermediate.finalize(self))
-    }
-
-    pub(crate) fn load_file(&self) -> Result<String, ()> {
-        // let full_path = self.file_meta.clone().unwrap().path.as_path().join(path);
+    pub(crate) fn read_file(&self) -> Result<String, ()> {
         let full_path = self.file_meta.clone().unwrap().full_path;
-        let mut file = File::open(dbg!(full_path.as_os_str())).map_err(|_| ())?;
+        let mut file = File::open(full_path.as_os_str()).map_err(|_| ())?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).map_err(|_| ())?;
         Ok(contents)
     }
+}
+
+/// Helper to load an HOCON file
+#[derive(Debug, Clone)]
+pub struct HoconLoader {
+    config: HoconLoaderConfig,
+    internal: internals::HoconInternal,
+}
+
+impl Default for HoconLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HoconLoader {
+    /// New default `HoconLoader`
+    pub fn new() -> Self {
+        Self {
+            config: HoconLoaderConfig::default(),
+            internal: internals::HoconInternal::empty(),
+        }
+    }
+
+    /// Disable System environment substitutions
+    pub fn no_system(&self) -> Self {
+        Self {
+            config: HoconLoaderConfig {
+                system: false,
+                ..self.config.clone()
+            },
+            ..self.clone()
+        }
+    }
+
+    pub(crate) fn load_from_str_of_conf_file(&self, s: &str) -> Result<Self, ()> {
+        Ok(Self {
+            internal: self.internal.add(match self.config.file_meta {
+                Some(ConfFileMeta {
+                    file_type: FileType::Properties,
+                    ..
+                }) => java_properties::read(s.as_bytes())
+                    .map(internals::HoconInternal::from_properties)
+                    .map_err(|_| ())?,
+                _ => self.config.parse_str_to_internal(s)?,
+            }),
+            ..self.clone()
+        })
+    }
+
+    /// Deserialize the loaded documents to the target type
+    #[cfg(feature = "serde-support")]
+    pub fn resolve<'de, T>(self) -> Result<T, ()>
+    where
+        T: ::serde::Deserialize<'de>,
+    {
+        self.hocon()
+            .and_then(|hocon| crate::serde::from_hocon(hocon).map_err(|_| ()))
+    }
+
+    /// Load the documents as HOCON
+    pub fn hocon(self) -> Result<Hocon, ()> {
+        let config = &self.config;
+        self.internal
+            .merge()
+            .map(|intermediate| intermediate.finalize(config))
+    }
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
-    pub fn load_from_str(&self, s: &str) -> Result<Hocon, ()> {
+    pub fn load_str(&self, s: &str) -> Result<Self, ()> {
         self.load_from_str_of_conf_file(s)
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
-    pub fn load_from_file(&self, path: &str) -> Result<Hocon, ()> {
+    pub fn load_file(&self, path: &str) -> Result<Self, ()> {
         let file_path = Path::new(path).to_path_buf();
-        let conf = self.with_file(file_path);
-        let contents = conf.load_file()?;
-        conf.load_from_str(&contents)
+        let conf = self.config.with_file(file_path);
+        let contents = conf.read_file()?;
+        Self {
+            config: conf,
+            ..self.clone()
+        }
+        .load_str(&contents)
     }
-
 }
 
 #[cfg(test)]
@@ -189,14 +232,19 @@ mod tests {
     #[test]
     fn read_from_properties() {
         let s = r#"a.b:c"#;
-        let doc = dbg!(HoconLoader {
-            include_depth: 0,
-            file_meta: Some(ConfFileMeta::from_path(
-                Path::new("file.properties").to_path_buf()
-            )),
-            system: true,
+        let loader = dbg!(HoconLoader {
+            config: HoconLoaderConfig {
+                file_meta: Some(ConfFileMeta::from_path(
+                    Path::new("file.properties").to_path_buf()
+                )),
+                ..Default::default()
+            },
+            ..Default::default()
         }
         .load_from_str_of_conf_file(s));
+        assert!(loader.is_ok());
+
+        let doc: Result<Hocon, _> = loader.unwrap().hocon();
         assert!(doc.is_ok());
         assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
     }
@@ -204,16 +252,54 @@ mod tests {
     #[test]
     fn read_from_hocon() {
         let s = r#"a.b:c"#;
-        let doc = dbg!(HoconLoader {
-            include_depth: 0,
-            file_meta: Some(ConfFileMeta::from_path(
-                Path::new("file.conf").to_path_buf()
-            )),
-            system: true,
+        let loader = dbg!(HoconLoader {
+            config: HoconLoaderConfig {
+                file_meta: Some(ConfFileMeta::from_path(
+                    Path::new("file.conf").to_path_buf()
+                )),
+                ..Default::default()
+            },
+            ..Default::default()
         }
         .load_from_str_of_conf_file(s));
+        assert!(loader.is_ok());
+
+        let doc: Result<Hocon, _> = loader.unwrap().hocon();
         assert!(doc.is_ok());
         assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
+    }
+
+    use ::serde::Deserialize;
+
+    #[derive(Deserialize, Debug)]
+    struct Simple {
+        int: i64,
+        float: f64,
+        option_int: Option<u64>,
+    }
+    #[derive(Deserialize, Debug)]
+    struct WithSubStruct {
+        vec_sub: Vec<Simple>,
+        int: i32,
+        float: f32,
+        boolean: bool,
+        string: String,
+    }
+
+    #[cfg(feature = "serde-support")]
+    #[test]
+    fn can_deserialize_struct() {
+        let doc = r#"{int:56, float:543.12, boolean:false, string: test,
+        vec_sub:[
+            {int:8, float:1.5, option_int:1919},
+            {int:8, float:0                   },
+            {int:1, float:2,   option_int:null},
+]}"#;
+
+        let res: Result<WithSubStruct, _> =
+            dbg!(HoconLoader::new().load_str(doc).unwrap().resolve());
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().int, 56)
     }
 
 }

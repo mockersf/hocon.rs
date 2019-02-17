@@ -42,9 +42,11 @@ fn stable_readable_display(value: &Hocon) -> String {
 }
 
 fn snapshot(file_name: &str) {
-    let doc = hocon::HoconLoader::new()
+    let doc: Result<hocon::Hocon, _> = hocon::HoconLoader::new()
         .no_system()
-        .load_from_file(file_name);
+        .load_file(file_name)
+        .unwrap()
+        .hocon();
 
     let mut file = File::open(file_name).unwrap();
     let mut original_content = String::new();
