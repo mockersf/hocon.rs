@@ -252,9 +252,9 @@ impl Node {
         }
     }
 
-    fn finalize(self) -> Hocon {
+    fn finalize(self, root: &HoconIntermediate) -> Hocon {
         match self {
-            Node::Leaf(v) => v.finalize(),
+            Node::Leaf(v) => v.finalize(root),
             Node::Node {
                 ref children,
                 ref key_hint,
@@ -264,7 +264,7 @@ impl Node {
                     HoconValue::Integer(_) => Hocon::Array(
                         children
                             .iter()
-                            .map(|c| c.value.clone().into_inner().finalize())
+                            .map(|c| c.value.clone().into_inner().finalize(root))
                             .collect(),
                     ),
                     HoconValue::String(_) => Hocon::Hash(
@@ -273,7 +273,7 @@ impl Node {
                             .map(|c| {
                                 (
                                     c.key.clone().string_value(),
-                                    c.value.clone().into_inner().finalize(),
+                                    c.value.clone().into_inner().finalize(root),
                                 )
                             })
                             .collect(),
@@ -329,13 +329,15 @@ impl Child {
     }
 }
 
+#[derive(Clone, Debug)]
 pub(crate) struct HoconIntermediate {
     tree: Node,
 }
 
 impl HoconIntermediate {
     pub(crate) fn finalize(self) -> Hocon {
-        self.tree.finalize()
+        let refself = &self.clone();
+        self.tree.finalize(refself)
     }
 }
 
@@ -373,7 +375,7 @@ impl HoconValue {
         }
     }
 
-    fn finalize(self) -> Hocon {
+    fn finalize(self, root: &HoconIntermediate) -> Hocon {
         match self {
             HoconValue::Null => Hocon::Null,
             HoconValue::BadValue => Hocon::BadValue,
@@ -383,19 +385,22 @@ impl HoconValue {
             HoconValue::String(s) => Hocon::String(s),
             HoconValue::UnquotedString(s) => Hocon::String(s),
             HoconValue::Concat(ref value) if value.len() == 1 => {
-                value.clone().pop().unwrap().finalize()
+                value.clone().pop().unwrap().finalize(root)
             }
             HoconValue::Concat(values) => Hocon::String(
                 values
                     .into_iter()
-                    .map(HoconValue::finalize)
+                    .map(|v| v.finalize(root))
                     .filter_map(|v| v.as_string())
                     .collect::<Vec<String>>()
                     .join(""),
             ),
+            HoconValue::PathSubstitution(v) => {
+                // second pass for substitution
+                root.tree.find_key(v.to_path()).finalize(root)
+            }
             // This cases should have been replaced during substitution
             // and not exist anymore at this point
-            HoconValue::PathSubstitution(_) => unreachable!(),
             HoconValue::EmptyObject => unreachable!(),
             HoconValue::EmptyArray => unreachable!(),
             HoconValue::Included { .. } => unreachable!(),
@@ -412,7 +417,13 @@ impl HoconValue {
     fn substitute(self, current_tree: &Rc<Child>, at_path: &[HoconValue]) -> Node {
         match self {
             HoconValue::PathSubstitution(path) => {
-                current_tree.find_key(path.to_path()).deep_clone()
+                match current_tree.find_key(path.to_path()).deep_clone() {
+                    Node::Leaf(HoconValue::BadValue) => {
+                        // If not is not found, keep substitution to try again on second pass
+                        Node::Leaf(HoconValue::PathSubstitution(path))
+                    }
+                    v => v,
+                }
             }
             HoconValue::Concat(values) => Node::Leaf(HoconValue::Concat(
                 values
@@ -444,16 +455,7 @@ impl HoconValue {
                         .iter()
                         .take(at_path.len() - original_path.len())
                         .cloned()
-                        .flat_map(|path_item| match path_item {
-                            HoconValue::String(_) => vec![path_item],
-                            HoconValue::Integer(_) => vec![path_item],
-                            HoconValue::UnquotedString(v) => v
-                                .split('.')
-                                .map(String::from)
-                                .map(HoconValue::String)
-                                .collect(),
-                            _ => vec![HoconValue::BadValue],
-                        })
+                        .flat_map(|path_item| path_item.to_path())
                         .collect::<Vec<_>>();
                     fixed_up_path.append(&mut path.to_path());
                     match current_tree.find_key(fixed_up_path) {

@@ -311,3 +311,12 @@ fn parse_comment_after_object() {
 
     assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
 }
+
+#[test]
+fn substitute_before_and_after() {
+    let s = r#"{"a" : "before", "before": ${a}, "after": ${b}, "b": "after" }"#;
+    let doc = dbg!(HoconLoader::load_from_str(dbg!(s))).unwrap();
+
+    assert_eq!(doc["before"].as_string().unwrap(), "before");
+    assert_eq!(doc["after"].as_string().unwrap(), "after");
+}
