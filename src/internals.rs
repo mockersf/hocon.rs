@@ -154,6 +154,7 @@ impl HoconInternal {
             for path_item in path.clone() {
                 for path_item in match path_item {
                     HoconValue::UnquotedString(s) => s
+                        .trim()
                         .split('.')
                         .map(|s| HoconValue::String(String::from(s)))
                         .collect(),
@@ -258,7 +259,7 @@ impl Node {
 
     fn finalize(self, root: &HoconIntermediate, config: &HoconLoaderConfig) -> Hocon {
         match self {
-            Node::Leaf(v) => v.finalize(root, config),
+            Node::Leaf(v) => v.finalize(root, config, false),
             Node::Node {
                 ref children,
                 ref key_hint,
@@ -365,10 +366,30 @@ pub(crate) enum HoconValue {
 }
 
 impl HoconValue {
+    pub(crate) fn maybe_concat(values: Vec<HoconValue>) -> HoconValue {
+        let nb_values = values.len();
+        let trimmed_values: Vec<HoconValue> = values
+            .into_iter()
+            .enumerate()
+            .filter_map(|item| match item {
+                (0, HoconValue::UnquotedString(ref s)) if s.trim() == "" => None,
+                (i, HoconValue::UnquotedString(ref s)) if s.trim() == "" && i == nb_values - 1 => {
+                    None
+                }
+                (_, v) => Some(v),
+            })
+            .collect();
+        match trimmed_values {
+            ref values if values.len() == 1 => values.first().unwrap().clone(),
+            values => HoconValue::Concat(values),
+        }
+    }
+
     fn to_path(&self) -> Vec<HoconValue> {
         match self {
             HoconValue::UnquotedString(s) if s == "." => vec![],
             HoconValue::UnquotedString(s) => s
+                .trim()
                 .split('.')
                 .map(String::from)
                 .map(HoconValue::String)
@@ -379,27 +400,41 @@ impl HoconValue {
         }
     }
 
-    fn finalize(self, root: &HoconIntermediate, config: &HoconLoaderConfig) -> Hocon {
-        match self {
-            HoconValue::Null => Hocon::Null,
-            HoconValue::BadValue => Hocon::BadValue,
-            HoconValue::Boolean(b) => Hocon::Boolean(b),
-            HoconValue::Integer(i) => Hocon::Integer(i),
-            HoconValue::Real(f) => Hocon::Real(f),
-            HoconValue::String(s) => Hocon::String(s),
-            HoconValue::UnquotedString(s) => Hocon::String(s),
-            HoconValue::Concat(ref value) if value.len() == 1 => {
-                value.clone().pop().unwrap().finalize(root, config)
-            }
-            HoconValue::Concat(values) => Hocon::String(
+    fn finalize(
+        self,
+        root: &HoconIntermediate,
+        config: &HoconLoaderConfig,
+        in_concat: bool,
+    ) -> Hocon {
+        match (self, in_concat) {
+            (HoconValue::Null, _) => Hocon::Null,
+            (HoconValue::BadValue, _) => Hocon::BadValue,
+            (HoconValue::Boolean(b), _) => Hocon::Boolean(b),
+            (HoconValue::Integer(i), _) => Hocon::Integer(i),
+            (HoconValue::Real(f), _) => Hocon::Real(f),
+            (HoconValue::String(s), _) => Hocon::String(s),
+            (HoconValue::UnquotedString(s), true) => Hocon::String(s),
+            (HoconValue::UnquotedString(s), false) => Hocon::String(String::from(s.trim())),
+            (HoconValue::Concat(values), _) => Hocon::String({
+                let nb_items = values.len();
                 values
                     .into_iter()
-                    .map(|v| v.finalize(root, config))
-                    .filter_map(|v| v.as_string())
+                    .enumerate()
+                    .map(|item| match item {
+                        (0, HoconValue::UnquotedString(s)) => {
+                            HoconValue::UnquotedString(String::from(s.trim_start()))
+                        }
+                        (i, HoconValue::UnquotedString(ref s)) if i == nb_items - 1 => {
+                            HoconValue::UnquotedString(String::from(s.trim_end()))
+                        }
+                        (_, v) => v,
+                    })
+                    .map(|v| v.finalize(root, config, true))
+                    .filter_map(|v| v.as_internal_string())
                     .collect::<Vec<String>>()
-                    .join(""),
-            ),
-            HoconValue::PathSubstitution(v) => {
+                    .join("")
+            }),
+            (HoconValue::PathSubstitution(v), _) => {
                 // second pass for substitution
                 let path = v.to_path();
                 match (
@@ -422,9 +457,9 @@ impl HoconValue {
             }
             // This cases should have been replaced during substitution
             // and not exist anymore at this point
-            HoconValue::EmptyObject => unreachable!(),
-            HoconValue::EmptyArray => unreachable!(),
-            HoconValue::Included { .. } => unreachable!(),
+            (HoconValue::EmptyObject, _) => unreachable!(),
+            (HoconValue::EmptyArray, _) => unreachable!(),
+            (HoconValue::Included { .. }, _) => unreachable!(),
         }
     }
 

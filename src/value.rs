@@ -77,6 +77,18 @@ impl Hocon {
         }
     }
 
+    pub(crate) fn as_internal_string(&self) -> Option<String> {
+        match *self {
+            Hocon::String(ref v) => Some(v.to_string()),
+            Hocon::Boolean(true) => Some("true".to_string()),
+            Hocon::Boolean(false) => Some("false".to_string()),
+            Hocon::Integer(i) => Some(i.to_string()),
+            Hocon::Real(f) => Some(f.to_string()),
+            Hocon::Null => Some("null".to_string()),
+            _ => None,
+        }
+    }
+
     /// Try to cast a value as a `bool` value
     pub fn as_bool(&self) -> Option<bool> {
         match *self {

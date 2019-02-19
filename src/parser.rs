@@ -118,7 +118,7 @@ named!(
             "$", "\"", "{", "}", "[", "]", ":", "=", ",", "+", "#", "`", "^", "?", "!", "@", "*",
             "&", "'", "\\", "\t", "\n", "//"
         ])),
-        |v| str::from_utf8(v).map(str::trim)
+        str::from_utf8
     )
 );
 
@@ -204,7 +204,7 @@ named_args!(
 
 named!(
     single_value<HoconValue>,
-    sp!(alt!(
+    alt!(
         string  =>           { |s| HoconValue::String(String::from(s))         } |
         integer =>           { |i| HoconValue::Integer(i)                      } |
         float   =>           { |f| HoconValue::Real(f)                         } |
@@ -212,7 +212,7 @@ named!(
         null =>              { |_| HoconValue::Null                            } |
         path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))   } |
         unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) }
-    ))
+    )
 );
 
 named!(
@@ -221,7 +221,7 @@ named!(
         do_parse!(
             possible_comment
                 >> first_value: single_value
-                >> remaining_values: many0!(sp!(single_value))
+                >> remaining_values: many0!(single_value)
                 >> (first_value, remaining_values)
         ),
         |(first_value, mut remaining_values)| if remaining_values.is_empty() {
@@ -229,7 +229,7 @@ named!(
         } else {
             let mut values = vec![first_value];
             values.append(&mut remaining_values);
-            HoconValue::Concat(values)
+            HoconValue::maybe_concat(values)
         }
     )
 );
