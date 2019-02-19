@@ -53,7 +53,24 @@ named!(
 
 named!(integer<i64>, flat_map!(recognize_float, parse_to!(i64)));
 
-named!(float<f64>, flat_map!(recognize_float, parse_to!(f64)));
+named!(
+    float<f64>,
+    map!(
+        flat_map!(recognize_float, parse_to!(F64WithoutLeadingDot)),
+        |v| v.0
+    )
+);
+
+struct F64WithoutLeadingDot(f64);
+impl std::str::FromStr for F64WithoutLeadingDot {
+    type Err = ();
+    fn from_str(v: &str) -> Result<Self, ()> {
+        if let Some(".") = v.get(0..1) {
+            return Err(());
+        }
+        v.parse::<f64>().map_err(|_| ()).map(F64WithoutLeadingDot)
+    }
+}
 
 named!(null, tag!("null"));
 
