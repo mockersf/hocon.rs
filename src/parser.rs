@@ -226,9 +226,9 @@ named!(
         integer =>           { |i| HoconValue::Integer(i)                      } |
         float   =>           { |f| HoconValue::Real(f)                         } |
         boolean =>           { |b| HoconValue::Boolean(b)                      } |
-        null =>              { |_| HoconValue::Null                            } |
         path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))   } |
-        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) }
+        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) } |
+        null =>              { |_| HoconValue::Null                            }
     )
 );
 

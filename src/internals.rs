@@ -413,6 +413,7 @@ impl HoconValue {
             (HoconValue::Integer(i), _) => Hocon::Integer(i),
             (HoconValue::Real(f), _) => Hocon::Real(f),
             (HoconValue::String(s), _) => Hocon::String(s),
+            (HoconValue::UnquotedString(ref s), _) if s == "null" => Hocon::Null,
             (HoconValue::UnquotedString(s), true) => Hocon::String(s),
             (HoconValue::UnquotedString(s), false) => Hocon::String(String::from(s.trim())),
             (HoconValue::Concat(values), _) => Hocon::String({
