@@ -255,6 +255,7 @@ named!(
     include<&str>,
     do_parse!(
         tag!("include ")
+            >> ws!(many0!(newline))
             >> file_name:
                 sp!(alt!(
                     call!(string)
