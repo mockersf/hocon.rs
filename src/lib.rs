@@ -60,6 +60,34 @@ mod serde;
 pub(crate) enum FileType {
     Properties,
     Hocon,
+    Json,
+    All,
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct FileRead {
+    properties: Option<String>,
+    json: Option<String>,
+    hocon: Option<String>,
+}
+impl FileRead {
+    fn from_file_type(ft: &FileType, s: String) -> Self {
+        match ft {
+            FileType::Properties => Self {
+                properties: Some(s),
+                ..Default::default()
+            },
+            FileType::Json => Self {
+                json: Some(s),
+                ..Default::default()
+            },
+            FileType::Hocon => Self {
+                hocon: Some(s),
+                ..Default::default()
+            },
+            FileType::All => unimplemented!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -81,7 +109,9 @@ impl ConfFileMeta {
             full_path: path.clone(),
             file_type: match Path::new(file).extension().and_then(OsStr::to_str) {
                 Some("properties") => FileType::Properties,
-                _ => FileType::Hocon,
+                Some("json") => FileType::Json,
+                Some("conf") => FileType::Hocon,
+                _ => FileType::All,
             },
         }
     }
@@ -125,18 +155,73 @@ impl HoconLoaderConfig {
         }
     }
 
-    pub(crate) fn parse_str_to_internal(&self, s: &str) -> Result<internals::HoconInternal, ()> {
-        Ok(parser::root(format!("{}\n\0", s).as_bytes(), self)
-            .map_err(|_| ())?
-            .1)
+    pub(crate) fn parse_str_to_internal(
+        &self,
+        s: FileRead,
+    ) -> Result<internals::HoconInternal, ()> {
+        let mut internal = internals::HoconInternal::empty();
+        if let Some(properties) = s.properties {
+            internal = internal.add(
+                java_properties::read(properties.as_bytes())
+                    .map(internals::HoconInternal::from_properties)
+                    .map_err(|_| ())?,
+            );
+        };
+        if let Some(json) = s.json {
+            internal = internal.add(
+                parser::root(format!("{}\n\0", json).as_bytes(), self)
+                    .map_err(|_| ())?
+                    .1,
+            );
+        };
+        if let Some(hocon) = s.hocon {
+            internal = internal.add(
+                parser::root(format!("{}\n\0", hocon).as_bytes(), self)
+                    .map_err(|_| ())?
+                    .1,
+            );
+        };
+
+        Ok(internal)
     }
 
-    pub(crate) fn read_file(&self) -> Result<String, ()> {
-        let full_path = self.file_meta.clone().unwrap().full_path;
-        let mut file = File::open(full_path.as_os_str()).map_err(|_| ())?;
+    pub(crate) fn read_file_to_string(path: PathBuf) -> Result<String, ()> {
+        let mut file = File::open(path.as_os_str()).map_err(|_| ())?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).map_err(|_| ())?;
         Ok(contents)
+    }
+
+    pub(crate) fn read_file(&self) -> Result<FileRead, ()> {
+        let full_path = self.file_meta.clone().unwrap().full_path;
+        match self.file_meta.as_ref().map(|fm| &fm.file_type) {
+            Some(FileType::All) => Ok(FileRead {
+                hocon: Self::read_file_to_string({
+                    let mut path = full_path.clone();
+                    path.set_extension("conf");
+                    path
+                })
+                .ok(),
+                json: Self::read_file_to_string({
+                    let mut path = full_path.clone();
+                    path.set_extension("json");
+                    path
+                })
+                .ok(),
+                properties: Self::read_file_to_string({
+                    let mut path = full_path.clone();
+                    path.set_extension("properties");
+                    path
+                })
+                .ok(),
+            }),
+            Some(ft) => Ok(FileRead::from_file_type(
+                ft,
+                Self::read_file_to_string(full_path)?,
+            )),
+            _ => unimplemented!(),
+        }
+        // Ok(vec![contents])
     }
 }
 
@@ -173,17 +258,9 @@ impl HoconLoader {
         }
     }
 
-    pub(crate) fn load_from_str_of_conf_file(&self, s: &str) -> Result<Self, ()> {
+    pub(crate) fn load_from_str_of_conf_file(&self, s: FileRead) -> Result<Self, ()> {
         Ok(Self {
-            internal: self.internal.add(match self.config.file_meta {
-                Some(ConfFileMeta {
-                    file_type: FileType::Properties,
-                    ..
-                }) => java_properties::read(s.as_bytes())
-                    .map(internals::HoconInternal::from_properties)
-                    .map_err(|_| ())?,
-                _ => self.config.parse_str_to_internal(s)?,
-            }),
+            internal: self.internal.add(self.config.parse_str_to_internal(s)?),
             ..self.clone()
         })
     }
@@ -209,7 +286,10 @@ impl HoconLoader {
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
     pub fn load_str(&self, s: &str) -> Result<Self, ()> {
-        self.load_from_str_of_conf_file(s)
+        self.load_from_str_of_conf_file(FileRead {
+            hocon: Some(String::from(s)),
+            ..Default::default()
+        })
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
@@ -221,7 +301,7 @@ impl HoconLoader {
             config: conf,
             ..self.clone()
         }
-        .load_str(&contents)
+        .load_from_str_of_conf_file(contents)
     }
 }
 
@@ -241,7 +321,7 @@ mod tests {
             },
             ..Default::default()
         }
-        .load_from_str_of_conf_file(s));
+        .load_str(s));
         assert!(loader.is_ok());
 
         let doc: Result<Hocon, _> = loader.unwrap().hocon();
@@ -261,7 +341,7 @@ mod tests {
             },
             ..Default::default()
         }
-        .load_from_str_of_conf_file(s));
+        .load_str(s));
         assert!(loader.is_ok());
 
         let doc: Result<Hocon, _> = loader.unwrap().hocon();
