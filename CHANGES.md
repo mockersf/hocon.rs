@@ -4,6 +4,7 @@
 
 * better coverage of HOCON specs
 * `HoconLoader` object to allow for parsing configuration
+* read system variable for configuration (can be disabled)
 
 ## 0.1.1
 
