@@ -181,6 +181,9 @@ impl HoconInternal {
         });
 
         for (path, item) in self.internal {
+            if path.len() == 0 {
+                continue;
+            }
             let mut current_node = Rc::clone(&root);
 
             for path_item in path.clone() {

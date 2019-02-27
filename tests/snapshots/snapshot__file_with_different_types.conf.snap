@@ -1,0 +1,7 @@
+---
+created: "2019-02-27T02:45:26.372114Z"
+creator: insta@0.6.2
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc.unwrap())
+---
+"{c: \"from hocon\", common: \"hocon\"}"
