@@ -8,7 +8,6 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
-    - env: HOCON_TEST_SUITE
   fast_finish: true
   include:
     - rust: stable
