@@ -24,8 +24,13 @@ test-generator = "0.2"
 insta = "0.6"
 serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
+criterion = "0.2"
 
 [features]
 default = [ "test-snapshot", "serde-support" ]
 test-snapshot = []
 serde-support = [ "serde" ]
+
+[[bench]]
+name = "parse"
+harness = false
