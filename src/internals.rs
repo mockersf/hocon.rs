@@ -15,9 +15,9 @@ impl HoconInternal {
         Self { internal: vec![] }
     }
 
-    pub(crate) fn add(&self, other: HoconInternal) -> Self {
-        let mut elems = self.internal.clone();
-        elems.append(&mut other.internal.clone());
+    pub(crate) fn add(self, mut other: HoconInternal) -> Self {
+        let mut elems = self.internal;
+        elems.append(&mut other.internal);
         Self { internal: elems }
     }
 

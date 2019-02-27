@@ -258,10 +258,10 @@ impl HoconLoader {
         }
     }
 
-    pub(crate) fn load_from_str_of_conf_file(&self, s: FileRead) -> Result<Self, ()> {
+    pub(crate) fn load_from_str_of_conf_file(self, s: FileRead) -> Result<Self, ()> {
         Ok(Self {
             internal: self.internal.add(self.config.parse_str_to_internal(s)?),
-            ..self.clone()
+            config: self.config,
         })
     }
 
@@ -285,7 +285,7 @@ impl HoconLoader {
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
-    pub fn load_str(&self, s: &str) -> Result<Self, ()> {
+    pub fn load_str(self, s: &str) -> Result<Self, ()> {
         self.load_from_str_of_conf_file(FileRead {
             hocon: Some(String::from(s)),
             ..Default::default()
