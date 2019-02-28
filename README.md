@@ -46,12 +46,12 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [x] omit root braces
 - [x] key-value separator
 - [x] commas are optional if newline is present
-- [ ] whitespace
+- [x] whitespace
 - [x] duplicate keys and object merging
-- [ ] unquoted strings
+- [x] unquoted strings
 - [ ] multi-line strings
-- [ ] value concatenation
-- [ ] path expressions
+- [x] value concatenation
+- [x] path expressions
 - [x] path as keys
 - [x] substitutions
 - [x] includes
