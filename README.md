@@ -49,7 +49,7 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [x] whitespace
 - [x] duplicate keys and object merging
 - [x] unquoted strings
-- [ ] multi-line strings
+- [x] multi-line strings
 - [x] value concatenation
 - [x] path expressions
 - [x] path as keys

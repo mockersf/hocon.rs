@@ -87,6 +87,74 @@ named!(
     )
 );
 
+macro_rules! take_until_3_chr (
+  ($i:expr, $chr:expr) => (
+    {
+      use nom::lib::std::result::Result::*;
+      use nom::lib::std::option::Option::*;
+      use nom::{Needed,IResult,need_more_err, ErrorKind};
+
+      use nom::InputTake;
+      let input = $i;
+
+      let res: IResult<_,_> = match find_3_chr(input, $chr) {
+        None => {
+          need_more_err($i, Needed::Size(3), ErrorKind::TakeUntil::<u32>)
+        },
+        Some(index) => {
+          Ok($i.take_split(index))
+        },
+      };
+      res
+    }
+  );
+);
+
+fn find_3_chr(input: &[u8], chr: u8) -> Option<usize> {
+    let substr_len = 3;
+    let substr = [chr; 3];
+
+    if substr_len > input.len() {
+        None
+    } else {
+        let max = input.len() - substr_len;
+        let mut offset = 0;
+        let mut haystack = &input[..];
+
+        while let Some(position) = memchr::memchr(chr, haystack) {
+            offset += position;
+
+            if offset > max {
+                return None;
+            }
+
+            if haystack[position..position + substr_len] == substr {
+                while offset + substr_len < input.len() && haystack[offset + substr_len] == chr {
+                    offset += 1;
+                }
+                return Some(offset);
+            }
+
+            haystack = &haystack[position + 1..];
+            offset += 1;
+        }
+
+        None
+    }
+}
+
+named!(
+    multiline_string<&str>,
+    delimited!(
+        tag!("\"\"\""),
+        map_res!(
+            take_until_3_chr!(AsBytes::as_bytes("\"")[0]),
+            str::from_utf8
+        ),
+        tag!("\"\"\"")
+    )
+);
+
 named!(
     boolean<bool>,
     alt!(value!(false, tag!("false")) | value!(true, tag!("true")))
@@ -222,6 +290,7 @@ named_args!(
 named!(
     single_value<HoconValue>,
     alt!(
+        multiline_string =>  { |s| HoconValue::String(String::from(s))         } |
         string  =>           { |s| HoconValue::String(String::from(s))         } |
         integer =>           { |i| HoconValue::Integer(i)                      } |
         float   =>           { |f| HoconValue::Real(f)                         } |

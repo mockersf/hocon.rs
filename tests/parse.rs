@@ -441,3 +441,67 @@ fn environment_variable_disabled() {
 
     assert_eq!(doc["var"], Hocon::BadValue);
 }
+
+#[test]
+fn parse_triple_quote() {
+    let s = r#"{"a" : """my single line string""" }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"].as_string().unwrap(), "my single line string");
+}
+
+#[test]
+fn parse_multiline_string() {
+    let s = r#"{"a" : """my
+multi
+line
+string""" }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(
+        doc["a"].as_string().unwrap(),
+        r#"my
+multi
+line
+string"#
+    );
+}
+
+#[test]
+fn parse_triple_quote_with_extra_quote() {
+    let s = r#"{"a" : """foo"""" }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"].as_string().unwrap(), r#"foo""#);
+}
+
+#[test]
+fn parse_multiple_triple_quote_strings() {
+    let s = r#"{"a" : """foo"""", b: """hohoho""", c: """my
+multi
+line
+string"""""}"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"].as_string().unwrap(), r#"foo""#);
+    assert_eq!(doc["b"].as_string().unwrap(), r#"hohoho"#);
+    assert_eq!(
+        doc["c"].as_string().unwrap(),
+        r#"my
+multi
+line
+string"""#
+    );
+}
