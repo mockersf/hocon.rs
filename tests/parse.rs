@@ -505,3 +505,31 @@ line
 string"""#
     );
 }
+
+#[test]
+fn parse_concat_objects() {
+    let s = r#"{"a": {"a": 1} {"b": 2}}"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"]["a"].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
+}
+
+#[test]
+fn parse_concat_objects_with_substitution() {
+    let s = r#"{
+        "a": {"a": 1}
+        "b": ${a} {"b": 2}
+    }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"]["a"].as_i64().unwrap(), 1);
+    assert_eq!(doc["b"]["a"].as_i64().unwrap(), 1);
+    assert_eq!(doc["b"]["b"].as_i64().unwrap(), 2);
+}

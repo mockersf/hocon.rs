@@ -232,7 +232,7 @@ named_args!(
                         HoconInternal::from_object(h.internal)
                             .add_to_path(vec![HoconValue::String(String::from(s))]).internal
                     } |
-                pair!(ws!(string), call!(hash, config))
+                pair!(ws!(string), call!(hashes, config))
                     => { |(s, h): (&str, Hash)|
                         HoconInternal::from_object(h)
                             .add_to_path(vec![HoconValue::String(String::from(s))]).internal
@@ -242,7 +242,7 @@ named_args!(
                         HoconInternal::from_object(h.internal)
                             .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
                     } |
-                pair!(ws!(unquoted_string), call!(hash, config))
+                pair!(ws!(unquoted_string), call!(hashes, config))
                     => { |(s, h): (&str, Hash)|
                         HoconInternal::from_object(h)
                             .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
@@ -269,6 +269,32 @@ named_args!(
 named_args!(
     closing(closing_char: char)<()>,
     do_parse!(opt!(separators) >> char!(closing_char) >> ())
+);
+
+named_args!(
+    hashes<'a>(config: &HoconLoaderConfig)<Hash>,
+    map!(
+        do_parse!(
+            maybe_substitution: opt!(path_substitution)
+                >> first_hash: call!(hash, config)
+                >> remaining_hashes: many0!(call!(hash, config))
+                >> (maybe_substitution, first_hash, remaining_hashes)
+        ),
+        |(maybe_substitution, mut first_hash, remaining_hashes)| match (maybe_substitution, remaining_hashes.is_empty()) {
+            (None, true) => first_hash,
+            (None, false) => {
+                let mut values = first_hash;
+                remaining_hashes.into_iter().for_each(|mut hash| values.append(&mut hash));
+                values
+            }
+            (Some(subst), _) => {
+                let mut values = vec![(vec![], HoconValue::PathSubstitution(Box::new(subst)))];
+                values.append(&mut first_hash);
+                remaining_hashes.into_iter().for_each(|mut hash| values.append(&mut hash));
+                values
+            }
+        }
+    )
 );
 
 named_args!(
@@ -348,10 +374,10 @@ named_args!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(hash, config)  => { |h| HoconInternal::from_object(h)          } |
-                    call!(array, config) => { |a| HoconInternal::from_array(a)           } |
-                    include              => { |f| HoconInternal::from_include(f, config) } |
-                    value                => { |v| HoconInternal::from_value(v)           }
+                    call!(hashes, config) => { |h| HoconInternal::from_object(h)          } |
+                    call!(array, config)  => { |a| HoconInternal::from_array(a)           } |
+                    include               => { |f| HoconInternal::from_include(f, config) } |
+                    value                 => { |v| HoconInternal::from_value(v)           }
                 )
             >> (wrapped)
     )
