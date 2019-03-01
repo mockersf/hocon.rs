@@ -51,6 +51,8 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [x] unquoted strings
 - [x] multi-line strings
 - [x] value concatenation
+- [ ] object concatenation
+- [ ] array concatenation
 - [x] path expressions
 - [x] path as keys
 - [x] substitutions
