@@ -444,13 +444,13 @@ fn environment_variable_disabled() {
 
 #[test]
 fn parse_triple_quote() {
-    let s = r#"{"a" : """my single line string""" }"#;
+    let s = r#"{"a" : """my "single line" string""" }"#;
     let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
         .unwrap()
         .hocon()
         .unwrap();
 
-    assert_eq!(doc["a"].as_string().unwrap(), "my single line string");
+    assert_eq!(doc["a"].as_string().unwrap(), r#"my "single line" string"#);
 }
 
 #[test]

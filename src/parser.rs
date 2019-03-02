@@ -121,7 +121,7 @@ fn find_3_chr(input: &[u8], chr: u8) -> Option<usize> {
         let mut offset = 0;
         let mut haystack = &input[..];
 
-        while let Some(position) = memchr::memchr(chr, haystack) {
+        while let Some(mut position) = memchr::memchr(chr, haystack) {
             offset += position;
 
             if offset > max {
@@ -129,7 +129,8 @@ fn find_3_chr(input: &[u8], chr: u8) -> Option<usize> {
             }
 
             if haystack[position..position + substr_len] == substr {
-                while offset + substr_len < input.len() && haystack[offset + substr_len] == chr {
+                while offset + substr_len < input.len() && haystack[position + substr_len] == chr {
+                    position += 1;
                     offset += 1;
                 }
                 return Some(offset);
