@@ -44,8 +44,6 @@ matrix:
         - cargo install cargo-travis || echo "cargo-travis already installed"
         - cargo install-update -a # update outdated cached binaries
       script:
-        - cargo test --no-default-features --features serde-support # snapshot tests fails when using kcov
-      after_success:
         - cargo coveralls --exclude-pattern tests --no-default-features --features serde-support # snapshot tests fails when using kcov
       addons:
         apt:
