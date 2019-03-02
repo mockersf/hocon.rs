@@ -644,11 +644,13 @@ fn parse_concat_arrays_with_plus_equal_with_init() {
     let s = r#"{
         a = [ 1 ]
         a += 2
+        "a" += 3
     }"#;
     let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+    assert_eq!(doc["a"][2].as_i64().unwrap(), 3);
 }
 
 #[test]
@@ -661,4 +663,14 @@ fn parse_concat_arrays_with_plus_equal_with_object() {
 
     assert_eq!(doc["a"][0]["b"].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1]["b"].as_i64().unwrap(), 2);
+}
+
+#[test]
+fn parse_null_value() {
+    let s = r#"{
+        a = null
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"], Hocon::Null);
 }

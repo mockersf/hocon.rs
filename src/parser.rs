@@ -377,8 +377,7 @@ named!(
         float   =>           { |f| HoconValue::Real(f)                         } |
         boolean =>           { |b| HoconValue::Boolean(b)                      } |
         path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))   } |
-        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) } |
-        null =>              { |_| HoconValue::Null                            }
+        unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) }
     )
 );
 
@@ -447,8 +446,7 @@ named_args!(
                     call!(root_include, config) => { |d| d                             } |
                     call!(root_hash, config)    => { |h| HoconInternal::from_object(h) } |
                     call!(hash, config)         => { |h| HoconInternal::from_object(h) } |
-                    call!(array, config)        => { |a| HoconInternal::from_array(a)  } |
-                    value                       => { |v| HoconInternal::from_value(v)  }
+                    call!(array, config)        => { |a| HoconInternal::from_array(a)  }
                 )
             >> (wrapped)
     )
