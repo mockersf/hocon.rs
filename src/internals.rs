@@ -79,6 +79,25 @@ impl HoconInternal {
                     },
                 )
             }
+            HoconValue::ToConcatToArray {
+                value,
+                original_path,
+                ..
+            } => {
+                let root = k
+                    .iter()
+                    .take(k.len() - original_path.len())
+                    .cloned()
+                    .collect();
+                (
+                    k,
+                    HoconValue::ToConcatToArray {
+                        value,
+                        array_root: Some(root),
+                        original_path,
+                    },
+                )
+            }
             _ => (k, v),
         }
     }
@@ -164,15 +183,22 @@ impl HoconInternal {
     }
 
     pub(crate) fn add_to_path(self, p: Path) -> Self {
+        self.transform(|mut k, v| {
+            let mut new_path = p.clone();
+            new_path.append(&mut k);
+            (new_path, v)
+        })
+    }
+
+    pub(crate) fn transform(
+        self,
+        transform: impl Fn(Vec<HoconValue>, HoconValue) -> (Vec<HoconValue>, HoconValue),
+    ) -> Self {
         Self {
             internal: self
                 .internal
                 .into_iter()
-                .map(|(mut k, v)| {
-                    let mut new_path = p.clone();
-                    new_path.append(&mut k);
-                    (new_path, v)
-                })
+                .map(|(k, v)| (transform(k, v)))
                 .collect(),
         }
     }
@@ -191,16 +217,8 @@ impl HoconInternal {
             if path.is_empty() {
                 continue;
             }
-            let (leaf_value, skip) = match item {
-                HoconValue::PathSubstitutionInParent(v) => {
-                    (HoconValue::PathSubstitution(v).substitute(&root, &path), 1)
-                }
-                v => (v.substitute(&root, &path), 0),
-            };
 
-            let mut current_path = vec![];
-            let mut current_node = Rc::clone(&root);
-            for path_item in path
+            let path = path
                 .clone()
                 .into_iter()
                 .flat_map(|path_item| match path_item {
@@ -211,12 +229,41 @@ impl HoconInternal {
                         .collect(),
                     _ => vec![path_item],
                 })
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .skip(skip)
-                .rev()
-            {
+                .collect::<Vec<_>>();
+            let (leaf_value, path) = match item {
+                HoconValue::PathSubstitutionInParent(v) => (
+                    HoconValue::PathSubstitution(v).substitute(&root, &path),
+                    path.into_iter().rev().skip(1).rev().collect(),
+                ),
+                HoconValue::ToConcatToArray {
+                    value,
+                    original_path,
+                    ..
+                } => (
+                    value.substitute(&root, &path),
+                    path.into_iter()
+                        .rev()
+                        .skip(original_path.len())
+                        .rev()
+                        .chain(std::iter::once(HoconValue::Null))
+                        .chain(original_path.into_iter().flat_map(|path_item| {
+                            match path_item {
+                                HoconValue::UnquotedString(s) => s
+                                    .trim()
+                                    .split('.')
+                                    .map(|s| HoconValue::String(String::from(s)))
+                                    .collect(),
+                                _ => vec![path_item],
+                            }
+                        }))
+                        .collect(),
+                ),
+                v => (v.substitute(&root, &path), path),
+            };
+
+            let mut current_path = vec![];
+            let mut current_node = Rc::clone(&root);
+            for path_item in path {
                 current_path.push(path_item.clone());
                 let (target_child, child_list) = match current_node.value.borrow().deref() {
                     Node::Leaf(_) => {
@@ -341,7 +388,7 @@ impl Node {
             } => children
                 .first()
                 .map(|ref first| match first.key {
-                    HoconValue::Integer(_) => Hocon::Array(
+                    HoconValue::Integer(_) | HoconValue::Null => Hocon::Array(
                         children
                             .iter()
                             .map(|c| {
@@ -441,6 +488,11 @@ pub(crate) enum HoconValue {
     Concat(Vec<HoconValue>),
     PathSubstitution(Box<HoconValue>),
     PathSubstitutionInParent(Box<HoconValue>),
+    ToConcatToArray {
+        value: Box<HoconValue>,
+        array_root: Option<Vec<HoconValue>>,
+        original_path: Vec<HoconValue>,
+    },
     Null,
     BadValue,
     EmptyObject,
@@ -569,11 +621,12 @@ impl HoconValue {
             } => value
                 .clone()
                 .finalize(root, config, in_concat, include_root),
-            // This cases should have been replaced during substitution
+            // These cases should have been replaced during substitution
             // and not exist anymore at this point
             HoconValue::EmptyObject => unreachable!(),
             HoconValue::EmptyArray => unreachable!(),
             HoconValue::PathSubstitutionInParent(_) => unreachable!(),
+            HoconValue::ToConcatToArray { .. } => unreachable!(),
         }
     }
 

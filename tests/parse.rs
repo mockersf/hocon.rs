@@ -535,6 +535,21 @@ fn parse_concat_objects_with_substitution() {
 }
 
 #[test]
+fn parse_concat_objects_with_self_substitution() {
+    let s = r#"{
+        "a": {"a": 1}
+        "a": ${a} {"b": 2}
+    }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"]["a"].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
+}
+
+#[test]
 fn parse_concat_arrays() {
     let s = r#"{a : [ 1, 2 ] [ 3, 4 ]}"#;
     let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
@@ -579,7 +594,6 @@ fn parse_concat_arrays_with_substitution_and_replace() {
     assert_eq!(doc["b"][1].as_i64().unwrap(), 6);
     assert!(doc["b"][2].as_i64().is_none());
     assert!(doc["b"][3].as_i64().is_none());
-    // assert!(false);
 }
 
 #[test]
@@ -594,5 +608,57 @@ fn parse_replace_array() {
     assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
     assert!(doc["a"][2].as_i64().is_none());
     assert!(doc["a"][3].as_i64().is_none());
-    // assert!(false);
+}
+
+#[test]
+fn parse_concat_arrays_with_self_substitution() {
+    let s = r#"{
+        a : [ 1, 2 ]
+        a : ${a} [ 3, 4 ]
+    }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+    assert_eq!(doc["a"][2].as_i64().unwrap(), 3);
+    assert_eq!(doc["a"][3].as_i64().unwrap(), 4);
+}
+
+#[test]
+fn parse_concat_arrays_with_plus_equal() {
+    let s = r#"{
+        a += 1
+        a += 2
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+}
+
+#[test]
+fn parse_concat_arrays_with_plus_equal_with_init() {
+    let s = r#"{
+        a = [ 1 ]
+        a += 2
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+}
+
+#[test]
+fn parse_concat_arrays_with_plus_equal_with_object() {
+    let s = r#"{
+        a += { b : 1 }
+        a += { b : 2 }
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"][0]["b"].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1]["b"].as_i64().unwrap(), 2);
 }

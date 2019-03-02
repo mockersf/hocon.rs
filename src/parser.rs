@@ -263,6 +263,20 @@ named_args!(
                         HoconInternal::from_object(h)
                             .add_to_path(vec![HoconValue::String(String::from(s))]).internal
                     } |
+                // to concat to an array
+                separated_pair!(ws!(string), ws!(tag!("+=")), call!(wrapper, config))
+                    => { |(s, h): (&str, HoconInternal)|
+                        HoconInternal::from_object(h.internal)
+                            .transform(|k, v| (
+                                k.clone(),
+                                HoconValue::ToConcatToArray {
+                                    value: Box::new(v),
+                                    array_root: None,
+                                    original_path: k
+                                }
+                            ))
+                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal
+                    } |
                 separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
                     => { |(s, h): (&str, HoconInternal)|
                         HoconInternal::from_object(h.internal)
@@ -271,6 +285,20 @@ named_args!(
                 pair!(ws!(unquoted_string), call!(hashes, config))
                     => { |(s, h): (&str, Hash)|
                         HoconInternal::from_object(h)
+                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
+                    } |
+                // to concat to an array
+                separated_pair!(ws!(unquoted_string), ws!(tag!("+=")), call!(wrapper, config))
+                    => { |(s, h): (&str, HoconInternal)|
+                        HoconInternal::from_object(h.internal)
+                            .transform(|k, v| (
+                                k.clone(),
+                                HoconValue::ToConcatToArray {
+                                    value: Box::new(v),
+                                    array_root: None,
+                                    original_path: k
+                                }
+                            ))
                             .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
                     }
             ))
