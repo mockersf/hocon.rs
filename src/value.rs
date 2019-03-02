@@ -43,13 +43,12 @@ impl Index<usize> for Hocon {
             Hocon::Hash(hash) => {
                 let mut keys_as_usize = hash
                     .keys()
-                    .into_iter()
                     .filter_map(|k| k.parse::<usize>().ok().map(|v| (k, v)))
                     .collect::<Vec<_>>();
                 keys_as_usize.sort_by(|(_, v0), (_, v1)| v0.cmp(v1));
                 keys_as_usize
                     .get(idx)
-                    .and_then(|(k, _)| hash.get(k.clone()))
+                    .and_then(|(k, _)| hash.get(*k))
                     .unwrap_or(&BAD_VALUE)
             }
             _ => &BAD_VALUE,
