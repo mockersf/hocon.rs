@@ -40,6 +40,18 @@ impl Index<usize> for Hocon {
     fn index(&self, idx: usize) -> &Self::Output {
         match self {
             Hocon::Array(vec) => vec.get(idx).unwrap_or(&BAD_VALUE),
+            Hocon::Hash(hash) => {
+                let mut keys_as_usize = hash
+                    .keys()
+                    .into_iter()
+                    .filter_map(|k| k.parse::<usize>().ok().map(|v| (k, v)))
+                    .collect::<Vec<_>>();
+                keys_as_usize.sort_by(|(_, v0), (_, v1)| v0.cmp(v1));
+                keys_as_usize
+                    .get(idx)
+                    .and_then(|(k, _)| hash.get(k.clone()))
+                    .unwrap_or(&BAD_VALUE)
+            }
             _ => &BAD_VALUE,
         }
     }
@@ -232,5 +244,25 @@ mod tests {
         assert_eq!(Hocon::String(String::from("5.6")).as_i64(), None);
         assert_eq!(Hocon::String(String::from("5")).as_f64(), Some(5.0));
         assert_eq!(Hocon::String(String::from("5")).as_i64(), Some(5));
+    }
+
+    #[test]
+    fn access_hash_as_array() {
+        let mut hm = HashMap::new();
+        hm.insert(String::from("0"), Hocon::Integer(5));
+        hm.insert(String::from("a"), Hocon::Integer(6));
+        hm.insert(String::from("2"), Hocon::Integer(7));
+        let val = Hocon::Hash(hm);
+
+        assert_eq!(val.as_bool(), None);
+        assert_eq!(val.as_f64(), None);
+        assert_eq!(val.as_i64(), None);
+        assert_eq!(val.as_string(), None);
+        assert_eq!(val[0], Hocon::Integer(5));
+        assert_eq!(val[1], Hocon::Integer(7));
+        assert_eq!(val[2], Hocon::BadValue);
+        assert_eq!(val["0"], Hocon::Integer(5));
+        assert_eq!(val["a"], Hocon::Integer(6));
+        assert_eq!(val["2"], Hocon::Integer(7));
     }
 }

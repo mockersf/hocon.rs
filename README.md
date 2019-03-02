@@ -57,4 +57,4 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [x] path as keys
 - [x] substitutions
 - [x] includes
-- [ ] conversion of numerically-indexed objects to arrays
+- [x] conversion of numerically-indexed objects to arrays

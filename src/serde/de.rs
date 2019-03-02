@@ -104,19 +104,10 @@ impl Read for HoconRead {
                 v => Some(v),
             },
             Index::Root => Some(&self.hocon),
-            _ => None,
-        }
-    }
-}
-
-struct VecRead {
-    vec: Vec<Hocon>,
-}
-
-impl Read for VecRead {
-    fn get_attribute_value(&self, index: &Index) -> Option<&Hocon> {
-        match *index {
-            Index::Number(key) => self.vec.get(key),
+            Index::Number(key) => match &self.hocon[key] {
+                Hocon::BadValue => None,
+                v => Some(v),
+            },
             _ => None,
         }
     }
@@ -299,12 +290,13 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                 message: format!("missing sequence for field {:?}", &self.current_field),
             })?
             .clone();
-        let read = if let Hocon::Array(list) = list {
-            VecRead { vec: list }
-        } else {
-            return Err(Error {
-                message: "No sequence input found".to_owned(),
-            });
+        let read = match list {
+            Hocon::Array(_) | Hocon::Hash(_) => HoconRead { hocon: list },
+            _ => {
+                return Err(Error {
+                    message: "No sequence input found".to_owned(),
+                });
+            }
         };
         let mut des = Deserializer::new(read);
         visitor.visit_seq(SeqAccess::new(&mut des))
@@ -588,6 +580,25 @@ mod tests {
         let doc = Hocon::Hash(hm);
         let res: super::Result<WithSubStruct> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn access_hash_as_array() {
+        #[derive(Deserialize, Debug)]
+        struct WithArray {
+            a: Vec<i32>,
+        }
+
+        let mut array = HashMap::new();
+        array.insert(String::from("0"), Hocon::Integer(5));
+        array.insert(String::from("2"), Hocon::Integer(7));
+        let mut hm = HashMap::new();
+        hm.insert(String::from("a"), Hocon::Hash(array));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<WithArray> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().a, vec![5, 7]);
     }
 
 }

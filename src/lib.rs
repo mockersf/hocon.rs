@@ -379,7 +379,48 @@ mod tests {
         let res: Result<WithSubStruct, _> =
             dbg!(HoconLoader::new().load_str(doc)).unwrap().resolve();
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().int, 56)
+        let res = res.unwrap();
+        assert_eq!(res.int, 56);
+        assert_eq!(res.float, 543.12);
+        assert_eq!(res.boolean, false);
+        assert_eq!(res.string, "test");
+        assert_eq!(res.vec_sub[0].int, 8);
+        assert_eq!(res.vec_sub[0].float, 1.5);
+        assert_eq!(res.vec_sub[0].option_int, Some(1919));
+        assert_eq!(res.vec_sub[1].int, 8);
+        assert_eq!(res.vec_sub[1].float, 0.0);
+        assert_eq!(res.vec_sub[1].option_int, None);
+        assert_eq!(res.vec_sub[2].int, 1);
+        assert_eq!(res.vec_sub[2].float, 2.0);
+        assert_eq!(res.vec_sub[2].option_int, None);
+    }
+
+    #[cfg(feature = "serde-support")]
+    #[test]
+    fn can_deserialize_struct2() {
+        let doc = r#"{int:56, float:543.12, boolean:false, string: test,
+            vec_sub.1 = {int:8, float:1.5, option_int:1919},
+            vec_sub.5 = {int:8, float:0                   },
+            vec_sub.8 = {int:1, float:2,   option_int:null},
+    }"#;
+
+        let res: Result<WithSubStruct, _> =
+            dbg!(HoconLoader::new().load_str(doc)).unwrap().resolve();
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert_eq!(res.int, 56);
+        assert_eq!(res.float, 543.12);
+        assert_eq!(res.boolean, false);
+        assert_eq!(res.string, "test");
+        assert_eq!(res.vec_sub[0].int, 8);
+        assert_eq!(res.vec_sub[0].float, 1.5);
+        assert_eq!(res.vec_sub[0].option_int, Some(1919));
+        assert_eq!(res.vec_sub[1].int, 8);
+        assert_eq!(res.vec_sub[1].float, 0.0);
+        assert_eq!(res.vec_sub[1].option_int, None);
+        assert_eq!(res.vec_sub[2].int, 1);
+        assert_eq!(res.vec_sub[2].float, 2.0);
+        assert_eq!(res.vec_sub[2].option_int, None);
     }
 
 }
