@@ -115,6 +115,11 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
       script:
         - cargo test
+    - stage: "Other Archs"
+      rust: stable
+      os: windows
+      script:
+        - cargo test
 
 cache: cargo
 
