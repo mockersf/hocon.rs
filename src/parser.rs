@@ -213,6 +213,32 @@ named!(
 );
 
 named_args!(
+    arrays<'a>(config: &HoconLoaderConfig)<Vec<HoconInternal>>,
+    map!(
+        do_parse!(
+            maybe_substitution: opt!(path_substitution)
+                >> first_array: call!(array, config)
+                >> remaining_arrays: many0!(call!(array, config))
+                >> (maybe_substitution, first_array, remaining_arrays)
+        ),
+        |(maybe_substitution, mut first_array, remaining_arrays)| match (maybe_substitution, remaining_arrays.is_empty()) {
+            (None, true) => first_array,
+            (None, false) => {
+                let mut values = first_array;
+                remaining_arrays.into_iter().for_each(|mut array| values.append(&mut array));
+                values
+            }
+            (Some(subst), _) => {
+                let mut values = vec![HoconInternal::from_value(HoconValue::PathSubstitutionInParent(Box::new(subst)))];
+                values.append(&mut first_array);
+                remaining_arrays.into_iter().for_each(|mut array| values.append(&mut array));
+                values
+            }
+        }
+    )
+);
+
+named_args!(
     array<'a>(config: &HoconLoaderConfig)<Vec<HoconInternal>>,
     sp!(delimited!(
         do_parse!(char!('[') >> many0!(newline) >> ()),
@@ -375,7 +401,7 @@ named_args!(
             >> wrapped:
                 alt!(
                     call!(hashes, config) => { |h| HoconInternal::from_object(h)          } |
-                    call!(array, config)  => { |a| HoconInternal::from_array(a)           } |
+                    call!(arrays, config) => { |a| HoconInternal::from_array(a)           } |
                     include               => { |f| HoconInternal::from_include(f, config) } |
                     value                 => { |v| HoconInternal::from_value(v)           }
                 )

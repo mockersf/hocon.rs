@@ -377,7 +377,7 @@ mod tests {
 ]}"#;
 
         let res: Result<WithSubStruct, _> =
-            dbg!(HoconLoader::new().load_str(doc).unwrap().resolve());
+            dbg!(HoconLoader::new().load_str(doc)).unwrap().resolve();
         assert!(res.is_ok());
         assert_eq!(res.unwrap().int, 56)
     }

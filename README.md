@@ -52,7 +52,7 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [x] multi-line strings
 - [x] value concatenation
 - [x] object concatenation
-- [ ] array concatenation
+- [x] array concatenation
 - [x] path expressions
 - [x] path as keys
 - [x] substitutions

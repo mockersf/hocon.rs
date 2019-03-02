@@ -84,6 +84,12 @@ impl HoconInternal {
     }
 
     pub(crate) fn from_array(a: Vec<HoconInternal>) -> Self {
+        let mut indexer: Box<dyn Fn(i64) -> HoconValue> = Box::new(HoconValue::Integer);
+        if !a.is_empty() && a[0].internal.len() == 1 {
+            if let HoconValue::PathSubstitutionInParent(_) = a[0].internal[0].1 {
+                indexer = Box::new(|_| HoconValue::Null);
+            }
+        }
         if a.is_empty() {
             Self {
                 internal: vec![(vec![], HoconValue::EmptyArray)],
@@ -97,7 +103,7 @@ impl HoconInternal {
                         Self {
                             internal: hw.internal,
                         }
-                        .add_to_path(vec![HoconValue::Integer(i as i64)])
+                        .add_to_path(vec![indexer(i as i64)])
                         .internal
                         .into_iter()
                     })
@@ -180,81 +186,110 @@ impl HoconInternal {
             }),
         });
 
+        let mut last_path_encoutered = vec![];
         for (path, item) in self.internal {
             if path.is_empty() {
                 continue;
             }
-            let mut current_node = Rc::clone(&root);
+            let (leaf_value, skip) = match item {
+                HoconValue::PathSubstitutionInParent(v) => {
+                    (HoconValue::PathSubstitution(v).substitute(&root, &path), 1)
+                }
+                v => (v.substitute(&root, &path), 0),
+            };
 
-            for path_item in path.clone() {
-                for path_item in match path_item {
+            let mut current_path = vec![];
+            let mut current_node = Rc::clone(&root);
+            for path_item in path
+                .clone()
+                .into_iter()
+                .flat_map(|path_item| match path_item {
                     HoconValue::UnquotedString(s) => s
                         .trim()
                         .split('.')
                         .map(|s| HoconValue::String(String::from(s)))
                         .collect(),
                     _ => vec![path_item],
-                } {
-                    let (target_child, child_list) = match current_node.value.borrow().deref() {
-                        Node::Leaf(_) => {
-                            let new_child = Rc::new(Child {
-                                key: path_item,
-                                value: RefCell::new(Node::Leaf(HoconValue::BadValue)),
-                            });
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .skip(skip)
+                .rev()
+            {
+                current_path.push(path_item.clone());
+                let (target_child, child_list) = match current_node.value.borrow().deref() {
+                    Node::Leaf(_) => {
+                        let new_child = Rc::new(Child {
+                            key: path_item,
+                            value: RefCell::new(Node::Leaf(HoconValue::BadValue)),
+                        });
 
-                            (Rc::clone(&new_child), vec![Rc::clone(&new_child)])
-                        }
-                        Node::Node { children, .. } => {
-                            let exist = children.iter().find(|child| child.key == path_item);
-                            match exist {
-                                Some(child) => (Rc::clone(child), children.clone()),
-                                None => {
-                                    let new_child = Rc::new(Child {
-                                        key: path_item.clone(),
-                                        value: RefCell::new(Node::Leaf(HoconValue::BadValue)),
-                                    });
-                                    let mut new_children = if children.is_empty() {
-                                        children.clone()
-                                    } else {
-                                        match (
-                                            Rc::deref(children.iter().next().unwrap()),
-                                            path_item,
-                                        ) {
-                                            (_, HoconValue::Integer(0)) => vec![],
-                                            (
-                                                Child {
-                                                    key: HoconValue::Integer(_),
-                                                    ..
-                                                },
-                                                HoconValue::String(_),
-                                            ) => vec![],
-                                            (
-                                                Child {
-                                                    key: HoconValue::String(_),
-                                                    ..
-                                                },
-                                                HoconValue::Integer(_),
-                                            ) => vec![],
-                                            _ => children.clone(),
-                                        }
-                                    };
+                        (Rc::clone(&new_child), vec![Rc::clone(&new_child)])
+                    }
+                    Node::Node { children, .. } => {
+                        let exist = children.iter().find(|child| child.key == path_item);
+                        let first_key = children.iter().next().map(|v| Rc::deref(v).key.clone());
+                        match (exist, first_key) {
+                            (_, Some(HoconValue::Integer(0)))
+                                if path_item == HoconValue::Integer(0)
+                                    && current_path.as_slice()
+                                        != &last_path_encoutered[0..current_path.len()] =>
+                            {
+                                let mut new_children = vec![];
+                                let new_child = Rc::new(Child {
+                                    key: path_item.clone(),
+                                    value: RefCell::new(Node::Leaf(HoconValue::BadValue)),
+                                });
+                                new_children.push(Rc::clone(&new_child));
 
-                                    new_children.push(Rc::clone(&new_child));
-                                    (new_child, new_children)
-                                }
+                                (new_child, new_children)
+                            }
+                            (Some(child), _) => (Rc::clone(child), children.clone()),
+                            (None, _) => {
+                                let new_child = Rc::new(Child {
+                                    key: path_item.clone(),
+                                    value: RefCell::new(Node::Leaf(HoconValue::BadValue)),
+                                });
+                                let mut new_children = if children.is_empty() {
+                                    children.clone()
+                                } else {
+                                    match (Rc::deref(children.iter().next().unwrap()), path_item) {
+                                        (_, HoconValue::Integer(0)) => vec![],
+                                        (
+                                            Child {
+                                                key: HoconValue::Integer(_),
+                                                ..
+                                            },
+                                            HoconValue::String(_),
+                                        ) => vec![],
+                                        (
+                                            Child {
+                                                key: HoconValue::String(_),
+                                                ..
+                                            },
+                                            HoconValue::Integer(_),
+                                        ) => vec![],
+                                        _ => children.clone(),
+                                    }
+                                };
+
+                                new_children.push(Rc::clone(&new_child));
+                                (new_child, new_children)
                             }
                         }
-                    };
-                    current_node.value.replace(Node::Node {
-                        children: child_list,
-                        key_hint: None,
-                    });
+                    }
+                };
+                current_node.value.replace(Node::Node {
+                    children: child_list,
+                    key_hint: None,
+                });
 
-                    current_node = target_child;
-                }
+                current_node = target_child;
             }
             let mut leaf = current_node.value.borrow_mut();
-            *leaf = item.substitute(&root, &path);
+            *leaf = leaf_value;
+            last_path_encoutered = current_path;
         }
 
         Ok(HoconIntermediate {
@@ -405,6 +440,7 @@ pub(crate) enum HoconValue {
     Boolean(bool),
     Concat(Vec<HoconValue>),
     PathSubstitution(Box<HoconValue>),
+    PathSubstitutionInParent(Box<HoconValue>),
     Null,
     BadValue,
     EmptyObject,
@@ -537,6 +573,7 @@ impl HoconValue {
             // and not exist anymore at this point
             HoconValue::EmptyObject => unreachable!(),
             HoconValue::EmptyArray => unreachable!(),
+            HoconValue::PathSubstitutionInParent(_) => unreachable!(),
         }
     }
 
@@ -551,12 +588,12 @@ impl HoconValue {
     fn substitute(self, current_tree: &Rc<Child>, at_path: &[HoconValue]) -> Node {
         match self {
             HoconValue::PathSubstitution(path) => {
-                match current_tree.find_key(path.to_path()).deep_clone() {
+                match current_tree.find_key(path.to_path()) {
                     Node::Leaf(HoconValue::BadValue) => {
                         // If node is not found, keep substitution to try again on second pass
                         Node::Leaf(HoconValue::PathSubstitution(path))
                     }
-                    v => v,
+                    v => v.deep_clone(),
                 }
             }
             HoconValue::Concat(values) => Node::Leaf(HoconValue::Concat(

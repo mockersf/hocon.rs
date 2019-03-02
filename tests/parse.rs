@@ -533,3 +533,66 @@ fn parse_concat_objects_with_substitution() {
     assert_eq!(doc["b"]["a"].as_i64().unwrap(), 1);
     assert_eq!(doc["b"]["b"].as_i64().unwrap(), 2);
 }
+
+#[test]
+fn parse_concat_arrays() {
+    let s = r#"{a : [ 1, 2 ] [ 3, 4 ]}"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .unwrap()
+        .hocon()
+        .unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+    assert_eq!(doc["a"][2].as_i64().unwrap(), 3);
+    assert_eq!(doc["a"][3].as_i64().unwrap(), 4);
+}
+
+#[test]
+fn parse_concat_arrays_with_substitution() {
+    let s = r#"{
+        a : [ 1, 2 ]
+        b : ${a} [ 3, 4 ]
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+    assert_eq!(doc["b"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["b"][1].as_i64().unwrap(), 2);
+    assert_eq!(doc["b"][2].as_i64().unwrap(), 3);
+    assert_eq!(doc["b"][3].as_i64().unwrap(), 4);
+}
+
+#[test]
+fn parse_concat_arrays_with_substitution_and_replace() {
+    let s = r#"{
+        a : [ 1, 2 ]
+        b : ${a} [ 3, 4 ]
+        b : [ 5, 6 ]
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
+    assert_eq!(doc["b"][0].as_i64().unwrap(), 5);
+    assert_eq!(doc["b"][1].as_i64().unwrap(), 6);
+    assert!(doc["b"][2].as_i64().is_none());
+    assert!(doc["b"][3].as_i64().is_none());
+    // assert!(false);
+}
+
+#[test]
+fn parse_replace_array() {
+    let s = r#"{
+        a : [ 1, 2, 3, 4 ]
+        a : [ 5, 6 ]
+    }"#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+
+    assert_eq!(doc["a"][0].as_i64().unwrap(), 5);
+    assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
+    assert!(doc["a"][2].as_i64().is_none());
+    assert!(doc["a"][3].as_i64().is_none());
+    // assert!(false);
+}
