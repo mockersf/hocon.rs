@@ -175,20 +175,18 @@ impl HoconInternal {
                             } else {
                                 Err(())
                             }
-                        } else {
-                            if config.external_url {
-                                reqwest::get(url)
-                                    .and_then(|mut r| r.text())
-                                    .map_err(|_| ())
-                                    .and_then(|string| {
-                                        config.parse_str_to_internal(crate::FileRead {
-                                            hocon: Some(String::from(string)),
-                                            ..Default::default()
-                                        })
+                        } else if config.external_url {
+                            reqwest::get(url)
+                                .and_then(|mut r| r.text())
+                                .map_err(|_| ())
+                                .and_then(|string| {
+                                    config.parse_str_to_internal(crate::FileRead {
+                                        hocon: Some(string),
+                                        ..Default::default()
                                     })
-                            } else {
-                                Err(())
-                            }
+                                })
+                        } else {
+                            Err(())
                         }
                     } else {
                         Err(())
