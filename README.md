@@ -59,6 +59,6 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [x] includes
 - [x] conversion of numerically-indexed objects to arrays
 - [ ] allow URL for included files
-- [ ] duration unit format
-- [ ] period unit format
+- [x] duration unit format
+- [x] period unit format
 - [x] size unit format

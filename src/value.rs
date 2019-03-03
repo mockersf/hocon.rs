@@ -175,6 +175,140 @@ impl Hocon {
             _ => None,
         }
     }
+
+    /// Try to return a value as a duration in milliseconds
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_milliseconds(&self) -> Option<f64> {
+        match *self {
+            Hocon::Integer(ref i) => Some(*i as f64),
+            Hocon::Real(ref f) => Some(*f),
+            Hocon::String(ref s) => units!(
+                match unit_format::value_and_unit(s).map(|(value, unit)| (value, unit.trim())),
+                "ns", "nano", "nanos", "nanosecond", "nanoseconds"          => 10.0f64.powf(-6.0),
+                "us", "micro", "micros", "microsecond", "microseconds"      => 10.0f64.powf(-3.0),
+                "", "ms", "milli", "millis", "millisecond", "milliseconds"  => 1.0,
+                "s", "second", "seconds"                                    => 1_000.0,
+                "m", "minute", "minutes"                                    => 1_000.0 * 60.0,
+                "h", "hour", "hours"                                        => 1_000.0 * 60.0 * 60.0,
+                "d", "day", "days"                                          => 1_000.0 * 60.0 * 60.0 * 24.0,
+                "w", "week", "weeks"                                        => 1_000.0 * 60.0 * 60.0 * 24.0 * 7.0,
+                "mo", "month", "months"                                     => 1_000.0 * 60.0 * 60.0 * 24.0 * 30.0,
+                "y", "year", "years"                                        => 1_000.0 * 60.0 * 60.0 * 24.0 * 365.0
+            ),
+            _ => None,
+        }
+    }
+
+    /// Try to return a value as a duration in nanoseconds
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_nanoseconds(&self) -> Option<f64> {
+        self.get_milliseconds().map(|v| v * 10.0f64.powf(6.0))
+    }
+
+    /// Try to return a value as a duration in microseconds
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_microseconds(&self) -> Option<f64> {
+        self.get_milliseconds().map(|v| v * 10.0f64.powf(3.0))
+    }
+
+    /// Try to return a value as a duration in seconds
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_seconds(&self) -> Option<f64> {
+        self.get_milliseconds().map(|v| v * 10.0f64.powf(-3.0))
+    }
+
+    /// Try to return a value as a duration in minutes
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_minutes(&self) -> Option<f64> {
+        self.get_milliseconds()
+            .map(|v| v * 10.0f64.powf(-3.0) / 60.0)
+    }
+
+    /// Try to return a value as a duration in hours
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_hours(&self) -> Option<f64> {
+        self.get_milliseconds()
+            .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0)
+    }
+
+    /// Try to return a value as a duration in days
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_days(&self) -> Option<f64> {
+        self.get_milliseconds()
+            .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0)
+    }
+
+    /// Try to return a value as a duration in weeks
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_weeks(&self) -> Option<f64> {
+        self.get_milliseconds()
+            .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 7.0)
+    }
+
+    /// Try to return a value as a duration in months
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_months(&self) -> Option<f64> {
+        self.get_milliseconds()
+            .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 30.0)
+    }
+
+    /// Try to return a value as a duration in years
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_years(&self) -> Option<f64> {
+        self.get_milliseconds()
+            .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 365.0)
+    }
+
+    /// Try to return a value as a duration
+    ///
+    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    ///
+    /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
+    /// plus an optional unit string.
+    pub fn get_duration(&self) -> Option<std::time::Duration> {
+        self.get_nanoseconds()
+            .map(|v| std::time::Duration::from_nanos(v as u64))
+    }
 }
 
 #[cfg(test)]
@@ -426,6 +560,73 @@ mod tests {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
             assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(80.0)));
         }
+    }
+
+    #[test]
+    fn access_on_duration() {
+        let mut hm = HashMap::new();
+        hm.insert(String::from("ns"), Hocon::String(String::from("1ns")));
+        hm.insert(String::from("us"), Hocon::String(String::from("1us")));
+        hm.insert(String::from("ms"), Hocon::String(String::from("1ms")));
+        hm.insert(String::from("s"), Hocon::String(String::from("1s")));
+        hm.insert(String::from("m"), Hocon::String(String::from("1m")));
+        hm.insert(String::from("h"), Hocon::String(String::from("1h")));
+        hm.insert(String::from("d"), Hocon::String(String::from("1d")));
+        hm.insert(String::from("w"), Hocon::String(String::from("1w")));
+        hm.insert(String::from("mo"), Hocon::String(String::from("1mo")));
+        hm.insert(String::from("y"), Hocon::String(String::from("1y")));
+        let val = Hocon::Hash(hm);
+
+        assert_eq!(val["ns"].get_nanoseconds(), Some(1.0));
+        assert_eq!(
+            val["ns"].get_duration(),
+            Some(std::time::Duration::from_nanos(1))
+        );
+        assert_eq!(val["us"].get_microseconds(), Some(1.0));
+        assert_eq!(
+            val["us"].get_duration(),
+            Some(std::time::Duration::from_micros(1))
+        );
+        assert_eq!(val["ms"].get_milliseconds(), Some(1.0));
+        assert_eq!(
+            val["ms"].get_duration(),
+            Some(std::time::Duration::from_millis(1))
+        );
+        assert_eq!(val["s"].get_seconds(), Some(1.0));
+        assert_eq!(
+            val["s"].get_duration(),
+            Some(std::time::Duration::from_secs(1))
+        );
+        assert_eq!(val["m"].get_minutes(), Some(1.0));
+        assert_eq!(
+            val["m"].get_duration(),
+            Some(std::time::Duration::from_secs(60))
+        );
+        assert_eq!(val["h"].get_hours(), Some(1.0));
+        assert_eq!(
+            val["h"].get_duration(),
+            Some(std::time::Duration::from_secs(60 * 60))
+        );
+        assert_eq!(val["d"].get_days(), Some(1.0));
+        assert_eq!(
+            val["d"].get_duration(),
+            Some(std::time::Duration::from_secs(60 * 60 * 24))
+        );
+        assert_eq!(val["w"].get_weeks(), Some(1.0));
+        assert_eq!(
+            val["w"].get_duration(),
+            Some(std::time::Duration::from_secs(60 * 60 * 24 * 7))
+        );
+        assert_eq!(val["mo"].get_months(), Some(1.0));
+        assert_eq!(
+            val["mo"].get_duration(),
+            Some(std::time::Duration::from_secs(60 * 60 * 24 * 30))
+        );
+        assert_eq!(val["y"].get_years(), Some(1.0));
+        assert_eq!(
+            val["y"].get_duration(),
+            Some(std::time::Duration::from_secs(60 * 60 * 24 * 365))
+        );
     }
 
 }
