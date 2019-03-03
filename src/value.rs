@@ -386,6 +386,8 @@ mod tests {
             Hocon::String(String::from("8kB")),
             Hocon::String(String::from("9 EB")),
             Hocon::String(String::from("10.5MiB")),
+            Hocon::String(String::from("5unit")),
+            Hocon::Boolean(false),
         ]);
 
         assert_eq!(val[0].get_bytes(), Some(5.0));
@@ -394,6 +396,8 @@ mod tests {
         assert_eq!(val[3].get_bytes(), Some(8.0 * 1_000.0));
         assert_eq!(val[4].get_bytes(), Some(9.0 * 10.0f64.powf(18.0)));
         assert_eq!(val[5].get_bytes(), Some(10.5 * 2.0f64.powf(20.0)));
+        assert_eq!(val[6].get_bytes(), None);
+        assert_eq!(val[7].get_bytes(), None);
     }
 
     #[test]
