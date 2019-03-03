@@ -37,6 +37,7 @@ matrix:
         - cargo clippy
     - stage: "Advanced Tests"
       name: coverage
+      env: CACHE_JOB=coverage
       rust: stable
       sudo: required
       install:
@@ -114,7 +115,9 @@ matrix:
       script:
         - cargo test
 
-cache: cargo
+cache:
+  cargo
+  timeout: 1000
 
 before_script:
   - export PATH="$PATH:$HOME/.cargo/bin"
