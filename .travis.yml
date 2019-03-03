@@ -131,8 +131,8 @@ matrix:
         - cargo test
 
 cache:
-  cargo
-  timeout: 1000
+  - cargo
+  - timeout: 1000
 
 before_script:
   - export PATH="$PATH:$HOME/.cargo/bin"
