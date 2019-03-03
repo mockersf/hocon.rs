@@ -61,4 +61,4 @@ https://github.com/lightbend/config/blob/master/HOCON.md
 - [ ] allow URL for included files
 - [ ] duration unit format
 - [ ] period unit format
-- [ ] size unit format
+- [x] size unit format
