@@ -1,10 +1,5 @@
 language: rust
 
-rust:
-  - stable
-  - beta
-  - nightly
-
 branches:
   except:
   - criterion
@@ -17,12 +12,23 @@ stages:
   - "Other Archs"
 
 matrix:
-  allow_failures:
-    - rust: nightly
   fast_finish: true
   include:
     - stage: test
+      name: stable
+      env: CACHE_JOB=stable
+      rust: stable
+      script:
+        - cargo test
+    - stage: test
+      name: beta
+      env: CACHE_JOB=beta
+      rust: stable
+      script:
+        - cargo test
+    - stage: test
       name: rustfmt
+      env: CACHE_JOB=stable
       rust: stable
       install:
         - rustup component add rustfmt
@@ -30,11 +36,18 @@ matrix:
         - cargo fmt -- --check
     - stage: test
       name: clippy
+      env: CACHE_JOB=stable
       rust: stable
       install:
         - rustup component add clippy
       script:
         - cargo clippy
+    - stage: "Advanced Tests"
+      name: nightly
+      env: CACHE_JOB=nightly
+      rust: stable
+      script:
+        - cargo test
     - stage: "Advanced Tests"
       name: coverage
       env: CACHE_JOB=coverage
@@ -58,11 +71,13 @@ matrix:
             - kalakris-cmake
     - stage: "Advanced Tests"
       name: hocon_test_suite
+      env: CACHE_JOB=stable
       rust: stable
       script:
         - ./hocon-test-suite.sh
     - stage: "Advanced Tests"
       name: bench
+      env: CACHE_JOB=stable
       rust: stable
       install:
         - sudo apt-get install -y gnuplot
