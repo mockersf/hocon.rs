@@ -144,7 +144,7 @@ macro_rules! units {
 impl Hocon {
     /// Try to return a value as a size in bytes
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#size-in-bytes-format
+    /// [Size in bytes Format](https://github.com/lightbend/config/blob/master/HOCON.md#size-in-bytes-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -178,7 +178,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in milliseconds
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -205,7 +205,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in nanoseconds
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -215,7 +215,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in microseconds
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -225,7 +225,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in seconds
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -235,7 +235,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in minutes
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -246,7 +246,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in hours
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -257,7 +257,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in days
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -268,7 +268,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in weeks
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -279,7 +279,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in months
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -290,7 +290,7 @@ impl Hocon {
 
     /// Try to return a value as a duration in years
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -301,7 +301,7 @@ impl Hocon {
 
     /// Try to return a value as a duration
     ///
-    /// https://github.com/lightbend/config/blob/master/HOCON.md#duration-format
+    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.

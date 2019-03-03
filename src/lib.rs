@@ -15,6 +15,8 @@
 //!
 //! Parse HOCON configuration files in Rust
 //!
+//! [HOCON Specifications](https://github.com/lightbend/config/blob/master/HOCON.md)
+//!
 //! ```rust
 //! use hocon::HoconLoader;
 //!
