@@ -129,6 +129,13 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
       script:
         - cargo test
+    - stage: "Other Archs"
+      name: "no default features"
+      rust: stable
+      os: linux
+      env: CACHE_JOB=no-default
+      script:
+        - cargo test --no-default-features
 
 cache:
   - cargo

@@ -41,6 +41,7 @@
 //!
 //! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
 //!
+//! # #[cfg(feature = "serde-support")]
 //! let conf: Configuration = HoconLoader::new().load_str(s).unwrap().resolve().unwrap();
 //!  ````
 //!
