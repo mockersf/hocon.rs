@@ -131,6 +131,8 @@ struct HoconLoaderConfig {
     include_depth: usize,
     file_meta: Option<ConfFileMeta>,
     system: bool,
+    #[cfg(feature = "url-support")]
+    external_url: bool,
 }
 
 impl Default for HoconLoaderConfig {
@@ -139,6 +141,8 @@ impl Default for HoconLoaderConfig {
             include_depth: 0,
             file_meta: None,
             system: true,
+            #[cfg(feature = "url-support")]
+            external_url: true,
         }
     }
 }
@@ -260,6 +264,18 @@ impl HoconLoader {
         Self {
             config: HoconLoaderConfig {
                 system: false,
+                ..self.config.clone()
+            },
+            ..self.clone()
+        }
+    }
+
+    /// Disable loading external urls
+    #[cfg(feature = "url-support")]
+    pub fn no_external_url(&self) -> Self {
+        Self {
+            config: HoconLoaderConfig {
+                external_url: false,
                 ..self.config.clone()
             },
             ..self.clone()

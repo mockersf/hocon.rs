@@ -2,7 +2,7 @@ use nom::*;
 
 use std::str;
 
-use crate::internals::{Hash, HoconInternal, HoconValue};
+use crate::internals::{Hash, HoconInternal, HoconValue, Include};
 use crate::HoconLoaderConfig;
 
 named!(
@@ -401,16 +401,24 @@ named!(
 );
 
 named!(
-    include<&str>,
+    include<Include>,
     do_parse!(
         tag!("include ")
             >> ws!(many0!(newline))
-            >> file_name:
+            >> included:
                 sp!(alt!(
-                    call!(string)
-                        | do_parse!(tag!("file(") >> file_name: string >> tag!(")") >> (file_name))
+                    map!(call!(string), |v| (Include::File(v)))
+                        | do_parse!(
+                            tag!("file(")
+                                >> file_name: string
+                                >> tag!(")")
+                                >> (Include::File(file_name))
+                        )
+                        | do_parse!(
+                            tag!("url(") >> url: string >> tag!(")") >> (Include::Url(url))
+                        )
                 ))
-            >> (file_name)
+            >> (included)
     )
 );
 
@@ -418,7 +426,7 @@ named_args!(
     root_include<'a>(config: &HoconLoaderConfig)<HoconInternal>,
     map!(
         do_parse!(file_name: ws!(include) >> doc: call!(root, config) >> ((file_name, doc))),
-        |(file_name, mut doc)| doc.add_include(file_name, config)
+        |(included, mut doc)| doc.add_include(included, config)
     )
 );
 

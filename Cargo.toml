@@ -19,6 +19,7 @@ nom = "4.2"
 serde = { version = "1.0", optional = true }
 java-properties = "1.1"
 memchr = "2.2"
+reqwest = { version = "0.9", optional = true }
 
 [dev-dependencies]
 test-generator = "0.2"
@@ -28,9 +29,10 @@ serde_json = "1.0"
 criterion = "0.2"
 
 [features]
-default = [ "test-snapshot", "serde-support" ]
+default = [ "test-snapshot", "serde-support", "url-support" ]
 test-snapshot = []
 serde-support = [ "serde" ]
+url-support = [ "reqwest" ]
 
 [[bench]]
 name = "parse"

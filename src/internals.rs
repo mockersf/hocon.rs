@@ -5,6 +5,19 @@ use std::rc::Rc;
 
 use super::{Hocon, HoconLoaderConfig};
 
+pub(crate) enum Include<'a> {
+    File(&'a str),
+    Url(&'a str),
+}
+impl<'a> Include<'a> {
+    fn included(&self) -> &'a str {
+        match self {
+            Include::File(s) => s,
+            Include::Url(s) => s,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) struct HoconInternal {
     pub(crate) internal: Hash,
@@ -132,21 +145,58 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn from_include(file_path: &str, config: &HoconLoaderConfig) -> Self {
+    pub(crate) fn from_include(included: Include, config: &HoconLoaderConfig) -> Self {
         if config.include_depth > 10 || config.file_meta.is_none() {
             Self {
                 internal: vec![(
-                    vec![HoconValue::String(String::from(file_path))],
+                    vec![HoconValue::String(String::from(included.included()))],
                     HoconValue::BadValue,
                 )],
             }
         } else if let Ok(included) = {
-            let include_config = config
-                .included_from()
-                .with_file(std::path::Path::new(file_path).to_path_buf());
-            include_config
-                .read_file()
-                .and_then(|s| include_config.parse_str_to_internal(s))
+            match included {
+                Include::File(path) => {
+                    let include_config = config
+                        .included_from()
+                        .with_file(std::path::Path::new(path).to_path_buf());
+                    include_config
+                        .read_file()
+                        .and_then(|s| include_config.parse_str_to_internal(s))
+                }
+                #[cfg(feature = "url-support")]
+                Include::Url(url) => {
+                    if let Ok(url) = reqwest::Url::parse(url) {
+                        if url.scheme() == "file" {
+                            if let Ok(path) = url.to_file_path() {
+                                let include_config = config.included_from().with_file(path);
+                                include_config
+                                    .read_file()
+                                    .and_then(|s| include_config.parse_str_to_internal(s))
+                            } else {
+                                Err(())
+                            }
+                        } else {
+                            if config.external_url {
+                                reqwest::get(url)
+                                    .and_then(|mut r| r.text())
+                                    .map_err(|_| ())
+                                    .and_then(|string| {
+                                        config.parse_str_to_internal(crate::FileRead {
+                                            hocon: Some(String::from(string)),
+                                            ..Default::default()
+                                        })
+                                    })
+                            } else {
+                                Err(())
+                            }
+                        }
+                    } else {
+                        Err(())
+                    }
+                }
+                #[cfg(not(feature = "url-support"))]
+                _ => Err(()),
+            }
         } {
             Self {
                 internal: included
@@ -167,15 +217,15 @@ impl HoconInternal {
         } else {
             Self {
                 internal: vec![(
-                    vec![HoconValue::String(String::from(file_path))],
+                    vec![HoconValue::String(String::from(included.included()))],
                     HoconValue::BadValue,
                 )],
             }
         }
     }
 
-    pub(crate) fn add_include(&mut self, file_path: &str, config: &HoconLoaderConfig) -> Self {
-        let mut included = Self::from_include(file_path, config);
+    pub(crate) fn add_include(&mut self, included: Include, config: &HoconLoaderConfig) -> Self {
+        let mut included = Self::from_include(included, config);
 
         included.internal.append(&mut self.internal);
 
@@ -743,7 +793,7 @@ mod tests {
     #[test]
     fn max_depth_of_include() {
         let val = dbg!(HoconInternal::from_include(
-            "file.conf",
+            Include::File("file.conf"),
             &HoconLoaderConfig {
                 include_depth: 15,
                 file_meta: Some(crate::ConfFileMeta::from_path(
@@ -766,7 +816,7 @@ mod tests {
     #[test]
     fn missing_file_included() {
         let val = dbg!(HoconInternal::from_include(
-            "file.conf",
+            Include::File("file.conf"),
             &HoconLoaderConfig {
                 include_depth: 5,
                 file_meta: Some(crate::ConfFileMeta::from_path(
