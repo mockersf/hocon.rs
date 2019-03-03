@@ -20,9 +20,12 @@
 //! ```rust
 //! use hocon::HoconLoader;
 //!
+//! # fn main() -> Result<(), ()> {
 //! let s = r#"{"a":5}"#;
-//! let doc = HoconLoader::new().load_str(s).unwrap().hocon().unwrap();
+//! let doc = HoconLoader::new().load_str(s)?.hocon()?;
 //! let a = doc["a"].as_i64();
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! Support serde to deserialize to a `struct`
@@ -39,10 +42,13 @@
 //!     auto_connect: bool,
 //! }
 //!
+//! # fn main() -> Result<(), ()> {
 //! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
 //!
 //! # #[cfg(feature = "serde-support")]
-//! let conf: Configuration = HoconLoader::new().load_str(s).unwrap().resolve().unwrap();
+//! let conf: Configuration = HoconLoader::new().load_str(s)?.resolve()?;
+//! # Ok(())
+//! # }
 //!  ````
 //!
 
@@ -224,7 +230,6 @@ impl HoconLoaderConfig {
             )),
             _ => unimplemented!(),
         }
-        // Ok(vec![contents])
     }
 }
 
