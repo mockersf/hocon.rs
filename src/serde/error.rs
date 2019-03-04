@@ -1,15 +1,10 @@
-//! This type represents all possible errors that can occur when serializing or deserializing DynamoDB data.
-
 use serde;
 use std;
 
-/// Alias for a Result with the error type `serde_dynamodb::Error`.
-pub type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Result<T> = std::result::Result<T, Error>;
 
-/// This type represents all possible errors that can occur when serializing to or deserializing from DynamoDB.
 #[derive(Debug)]
-pub struct Error {
-    /// Message describing the error
+pub(crate) struct Error {
     pub message: String,
 }
 impl serde::ser::Error for Error {

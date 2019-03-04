@@ -162,38 +162,14 @@ impl HoconInternal {
                     include_config
                         .read_file()
                         .and_then(|s| include_config.parse_str_to_internal(s))
+                        .map_err(|_| crate::error::HoconError::IncludeError)
                 }
                 #[cfg(feature = "url-support")]
-                Include::Url(url) => {
-                    if let Ok(url) = reqwest::Url::parse(url) {
-                        if url.scheme() == "file" {
-                            if let Ok(path) = url.to_file_path() {
-                                let include_config = config.included_from().with_file(path);
-                                include_config
-                                    .read_file()
-                                    .and_then(|s| include_config.parse_str_to_internal(s))
-                            } else {
-                                Err(())
-                            }
-                        } else if config.external_url {
-                            reqwest::get(url)
-                                .and_then(|mut r| r.text())
-                                .map_err(|_| ())
-                                .and_then(|string| {
-                                    config.parse_str_to_internal(crate::FileRead {
-                                        hocon: Some(string),
-                                        ..Default::default()
-                                    })
-                                })
-                        } else {
-                            Err(())
-                        }
-                    } else {
-                        Err(())
-                    }
-                }
+                Include::Url(url) => config
+                    .load_url(url)
+                    .map_err(|_| crate::error::HoconError::IncludeError),
                 #[cfg(not(feature = "url-support"))]
-                _ => Err(()),
+                _ => Err(crate::error::HoconError::IncludeError),
             }
         } {
             Self {
@@ -251,7 +227,7 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn merge(self) -> Result<HoconIntermediate, ()> {
+    pub(crate) fn merge(self) -> Result<HoconIntermediate, failure::Error> {
         let root = Rc::new(Child {
             key: HoconValue::BadValue,
             value: RefCell::new(Node::Node {

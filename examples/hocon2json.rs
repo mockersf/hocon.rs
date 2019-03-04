@@ -29,20 +29,22 @@ fn hocon_to_json(hocon: Hocon) -> Option<Value> {
     }
 }
 
-fn parse_to_json(path: &str) -> String {
+fn parse_to_json(path: &str) -> Result<String, failure::Error> {
     let hocon: Result<_, _> = dbg!(HoconLoader::new()
         .no_system()
         .load_file(path)
         .unwrap()
         .hocon());
-    let json: Result<Option<_>, _> = hocon.map(hocon_to_json);
-    json.and_then(|json| serde_json::to_string_pretty(&json).map_err(|_| ()))
-        .unwrap_or_else(|_| String::from(""))
+    let json: Option<_> = hocon.map(hocon_to_json)?;
+    Ok(serde_json::to_string_pretty(&json)?)
 }
 
 fn main() {
     match env::args().nth(1) {
         None => println!("please provide a HOCON file"),
-        Some(file) => println!("{}", dbg!(parse_to_json(&file))),
+        Some(file) => println!(
+            "{}",
+            dbg!(parse_to_json(&file).unwrap_or_else(|_| String::from("")))
+        ),
     }
 }

@@ -1,5 +1,9 @@
 # Changes
 
+## 0.3.0
+
+* basic error management
+
 ## 0.2.0
 
 * better coverage of HOCON specs
