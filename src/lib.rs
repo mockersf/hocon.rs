@@ -184,14 +184,14 @@ impl HoconLoaderConfig {
         if let Some(json) = s.json {
             internal = internal.add(
                 parser::root(format!("{}\n\0", json).as_bytes(), self)
-                    .map_err(|_| error::HoconError::ParseError)?,
+                    .map_err(|_| error::HoconError::ParseError)?
                     .1,
             );
         };
         if let Some(hocon) = s.hocon {
             internal = internal.add(
                 parser::root(format!("{}\n\0", hocon).as_bytes(), self)
-                    .map_err(|_| error::HoconError::ParseError)?,
+                    .map_err(|_| error::HoconError::ParseError)?
                     .1,
             );
         };
