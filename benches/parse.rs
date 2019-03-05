@@ -8,8 +8,7 @@ fn parse(file_name: &str) -> () {
         .no_system()
         .load_file(file_name)
         .unwrap()
-        .hocon()
-        .unwrap();
+        .hocon();
 }
 
 fn criterion_benchmark(c: &mut Criterion) {

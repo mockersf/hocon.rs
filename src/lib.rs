@@ -22,7 +22,7 @@
 //!
 //! # fn main() -> Result<(), failure::Error> {
 //! let s = r#"{"a":5}"#;
-//! let doc = HoconLoader::new().load_str(s)?.hocon()?;
+//! let doc = HoconLoader::new().load_str(s)?.hocon();
 //! let a = doc["a"].as_i64();
 //! # Ok(())
 //! # }
@@ -61,7 +61,8 @@ mod internals;
 mod parser;
 mod value;
 pub use value::Hocon;
-pub mod error;
+mod error;
+pub use error::HoconError;
 
 #[cfg(feature = "serde-support")]
 mod serde;
@@ -241,31 +242,41 @@ impl HoconLoaderConfig {
 
     #[cfg(feature = "url-support")]
     fn load_url(&self, url: &str) -> Result<internals::HoconInternal, failure::Error> {
-        if let Ok(url) = reqwest::Url::parse(url) {
-            if url.scheme() == "file" {
-                if let Ok(path) = url.to_file_path() {
+        if let Ok(parsed_url) = reqwest::Url::parse(url) {
+            if parsed_url.scheme() == "file" {
+                if let Ok(path) = parsed_url.to_file_path() {
                     let include_config = self.included_from().with_file(path);
                     let s = include_config.read_file()?;
-                    Ok(include_config
-                        .parse_str_to_internal(s)
-                        .map_err(|_| crate::error::HoconError::IncludeError)?)
+                    Ok(include_config.parse_str_to_internal(s).map_err(|_| {
+                        crate::error::HoconError::IncludeError {
+                            path: String::from(url),
+                        }
+                    })?)
                 } else {
-                    Err(crate::error::HoconError::IncludeError)?
+                    Err(crate::error::HoconError::IncludeError {
+                        path: String::from(url),
+                    })?
                 }
             } else if self.external_url {
-                let body = reqwest::get(url)
+                let body = reqwest::get(parsed_url)
                     .and_then(|mut r| r.text())
-                    .map_err(|_| crate::error::HoconError::IncludeError)?;
+                    .map_err(|_| crate::error::HoconError::IncludeError {
+                        path: String::from(url),
+                    })?;
 
                 Ok(self.parse_str_to_internal(FileRead {
                     hocon: Some(body),
                     ..Default::default()
                 })?)
             } else {
-                Err(crate::error::HoconError::IncludeError)?
+                Err(crate::error::HoconError::IncludeError {
+                    path: String::from(url),
+                })?
             }
         } else {
-            Err(crate::error::HoconError::IncludeError)?
+            Err(crate::error::HoconError::IncludeError {
+                path: String::from(url),
+            })?
         }
     }
 }
@@ -328,18 +339,13 @@ impl HoconLoader {
     where
         T: ::serde::Deserialize<'de>,
     {
-        Ok(
-            crate::serde::from_hocon(self.hocon()?)
-                .map_err(|_| error::HoconError::FinalizeError)?,
-        )
+        Ok(crate::serde::from_hocon(self.hocon())?)
     }
 
     /// Load the documents as HOCON
-    pub fn hocon(self) -> Result<Hocon, failure::Error> {
+    pub fn hocon(self) -> Hocon {
         let config = &self.config;
-        self.internal
-            .merge()
-            .map(|intermediate| intermediate.finalize(config))
+        self.internal.merge().finalize(config)
     }
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
@@ -383,9 +389,8 @@ mod tests {
         .load_str(s));
         assert!(loader.is_ok());
 
-        let doc: Result<Hocon, _> = loader.unwrap().hocon();
-        assert!(doc.is_ok());
-        assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
+        let doc = loader.unwrap().hocon();
+        assert_eq!(doc["a"]["b"].as_string(), Some(String::from("c")));
     }
 
     #[test]
@@ -403,9 +408,8 @@ mod tests {
         .load_str(s));
         assert!(loader.is_ok());
 
-        let doc: Result<Hocon, _> = loader.unwrap().hocon();
-        assert!(doc.is_ok());
-        assert_eq!(doc.unwrap()["a"]["b"].as_string(), Some(String::from("c")));
+        let doc: Hocon = loader.unwrap().hocon();
+        assert_eq!(doc["a"]["b"].as_string(), Some(String::from("c")));
     }
 
     use ::serde::Deserialize;

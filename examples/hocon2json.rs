@@ -30,12 +30,8 @@ fn hocon_to_json(hocon: Hocon) -> Option<Value> {
 }
 
 fn parse_to_json(path: &str) -> Result<String, failure::Error> {
-    let hocon: Result<_, _> = dbg!(HoconLoader::new()
-        .no_system()
-        .load_file(path)
-        .unwrap()
-        .hocon());
-    let json: Option<_> = hocon.map(hocon_to_json)?;
+    let hocon = dbg!(HoconLoader::new().no_system().load_file(path)?.hocon());
+    let json: Option<_> = hocon_to_json(hocon);
     Ok(serde_json::to_string_pretty(&json)?)
 }
 

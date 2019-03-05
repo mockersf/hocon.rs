@@ -42,7 +42,7 @@ fn stable_readable_display(value: &Hocon) -> String {
 }
 
 fn snapshot(file_name: &str) {
-    let doc: Result<hocon::Hocon, _> = hocon::HoconLoader::new()
+    let doc = hocon::HoconLoader::new()
         .no_system()
         .load_file(file_name)
         .unwrap()
@@ -53,9 +53,8 @@ fn snapshot(file_name: &str) {
     file.read_to_string(&mut original_content).unwrap();
     println!("original file: {}\n{}", file_name, original_content);
 
-    assert!(doc.is_ok());
     assert_debug_snapshot_matches!(
         file_name.split('/').last().unwrap(),
-        stable_readable_display(&doc.unwrap())
+        stable_readable_display(&doc)
     );
 }

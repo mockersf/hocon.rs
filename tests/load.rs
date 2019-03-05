@@ -8,11 +8,10 @@ use hocon;
 test_generator::test_expand_paths! { file_load; "tests/data/*.conf" }
 
 fn file_load(file_name: &str) {
-    let doc: Result<hocon::Hocon, _> = hocon::HoconLoader::new()
+    let doc = hocon::HoconLoader::new()
         .no_system()
         .load_file(file_name)
-        .unwrap()
-        .hocon();
+        .map(|doc| doc.hocon());
 
     let mut file = File::open(file_name).unwrap();
     let mut original_content = String::new();

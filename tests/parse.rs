@@ -7,10 +7,7 @@ use hocon::{Hocon, HoconLoader};
 #[test]
 fn parse_string() {
     let s = r#"{"a":"dndjf"}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_string().unwrap(), "dndjf");
 }
@@ -18,10 +15,7 @@ fn parse_string() {
 #[test]
 fn parse_int() {
     let s = r#"{"a":5}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_i64().unwrap(), 5);
 }
@@ -29,10 +23,7 @@ fn parse_int() {
 #[test]
 fn parse_float() {
     let s = r#"{"a":5.7}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_f64().unwrap(), 5.7);
 }
@@ -40,10 +31,7 @@ fn parse_float() {
 #[test]
 fn parse_bool() {
     let s = r#"{"a":true}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_bool().unwrap(), true);
 }
@@ -51,10 +39,7 @@ fn parse_bool() {
 #[test]
 fn parse_int_array() {
     let s = r#"{"a":[5, 6, 7]}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
     assert_eq!(doc["a"][2].as_i64().unwrap(), 7);
@@ -65,10 +50,7 @@ fn parse_int_array_newline_as_separator() {
     let s = r#"{"a":[5
     6
     ]}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 5);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
@@ -79,10 +61,7 @@ fn parse_object_newline_as_separator() {
     let s = r#"{"a":5
 "b":6
 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_i64().unwrap(), 5);
     assert_eq!(doc["b"].as_i64().unwrap(), 6);
@@ -93,10 +72,7 @@ fn parse_trailing_commas() {
     let s = r#"{"a":[5, 6, 7,
 ],
 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
 }
@@ -104,10 +80,7 @@ fn parse_trailing_commas() {
 #[test]
 fn parse_nested() {
     let s = r#"{"a":{"b":[{"c":5},{"c":6}]}}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"]["b"][1]["c"].as_i64().unwrap(), 6);
 }
@@ -117,10 +90,7 @@ fn parse_newlines() {
     let s = r#"{"a":
     5
     }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_i64().unwrap(), 5);
 }
@@ -138,10 +108,7 @@ fn parse_comment() {
     // comment 6
     8]
 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_i64().unwrap(), 5);
 }
@@ -149,10 +116,7 @@ fn parse_comment() {
 #[test]
 fn parse_keyvalue_separator() {
     let s = r#"{"a":5,"b"=6,"c" {"a":1}}}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_i64().unwrap(), 5);
     assert_eq!(doc["b"].as_i64().unwrap(), 6);
@@ -165,10 +129,7 @@ fn parse_object_merging() {
             "foo" : { "a" : 42 },
             "foo" : { "b" : 43 }
         }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"]["a"].as_i64().unwrap(), 42);
     assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
@@ -180,10 +141,7 @@ fn parse_change_type_to_object() {
             "foo" : [0, 1, 2],
             "foo" : { "b" : 43 }
         }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert!(doc["foo"][0].as_i64().is_none());
     assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
@@ -195,10 +153,7 @@ fn parse_change_type_to_array() {
             "foo" : { "b" : 43 },
             "foo" : [0, 1, 2],
         }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"][0].as_i64().unwrap(), 0);
     assert!(doc["foo"]["b"].as_i64().is_none());
@@ -210,10 +165,7 @@ fn parse_reset_array_index() {
             "foo" : [0, 1, 2],
             "foo" : [5, 6, 7]
         }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"][0].as_i64().unwrap(), 5);
 }
@@ -232,10 +184,7 @@ fn parse_error() {
 #[test]
 fn wrong_index() {
     let s = r#"{ "a" : 42 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     if let Hocon::BadValue = doc["missing"] {
 
@@ -252,10 +201,7 @@ fn wrong_index() {
 #[test]
 fn wrong_casts() {
     let s = r#"{ "a" : 42 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert!(doc["missing"].as_i64().is_none());
     assert!(doc["missing"].as_f64().is_none());
@@ -266,10 +212,7 @@ fn wrong_casts() {
 #[test]
 fn parse_root_braces_omitted() {
     let s = r#""foo" : { "b" : 43 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"]["b"].as_i64().unwrap(), 43);
 }
@@ -277,10 +220,7 @@ fn parse_root_braces_omitted() {
 #[test]
 fn parse_unquoted_string() {
     let s = r#"{"foo" : { b : hello world }}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello world");
 }
@@ -288,10 +228,7 @@ fn parse_unquoted_string() {
 #[test]
 fn parse_path() {
     let s = r#"{foo.b : hello }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"]["b"].as_string().unwrap(), "hello");
 }
@@ -299,10 +236,7 @@ fn parse_path() {
 #[test]
 fn parse_concat() {
     let s = r#"{"foo" : "hello"" world n°"1 }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"].as_string().unwrap(), "hello world n°1");
 }
@@ -310,10 +244,7 @@ fn parse_concat() {
 #[test]
 fn parse_path_substitution() {
     let s = r#"{"who" : "world", "number": 1, "bar": "hello "${who}" n°"${number} }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["bar"].as_string().unwrap(), "hello world n°1");
 }
@@ -322,10 +253,7 @@ fn parse_path_substitution() {
 fn parse_file_ends_with_unquoted_string() {
     let s = r#"#
 foo:bar"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["foo"].as_string().unwrap(), "bar");
 }
@@ -334,10 +262,7 @@ foo:bar"#;
 fn parse_comment_in_array_no_comma() {
     let s = r#"a=[1 // zut
         2]"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
 }
@@ -345,10 +270,7 @@ fn parse_comment_in_array_no_comma() {
 #[test]
 fn parse_substitute_array() {
     let s = r#"a=[1, 2, 3],b=[${a}]"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["b"][0][1].as_i64().unwrap(), 2);
 }
@@ -356,10 +278,7 @@ fn parse_substitute_array() {
 #[test]
 fn parse_empty_objects() {
     let s = r#"a={b{}},b=5"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["b"].as_i64().unwrap(), 5);
 }
@@ -367,10 +286,7 @@ fn parse_empty_objects() {
 #[test]
 fn parse_missing_substitution() {
     let s = r#"{a={c=${?b}}}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"]["c"], Hocon::BadValue);
 }
@@ -378,10 +294,7 @@ fn parse_missing_substitution() {
 #[test]
 fn parse_empty_object() {
     let s = r#"a=[{},{}],b=[]"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][0], Hocon::Hash(HashMap::new()));
     assert_eq!(doc["b"], Hocon::Array(vec![]));
@@ -396,10 +309,7 @@ fn parse_comment_after_object() {
     # zut
 }
 #zut"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
 }
@@ -407,10 +317,7 @@ fn parse_comment_after_object() {
 #[test]
 fn substitute_before_and_after() {
     let s = r#"{"a" : "before", "before": ${a}, "after": ${b}, "b": "after" }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["before"].as_string().unwrap(), "before");
     assert_eq!(doc["after"].as_string().unwrap(), "after");
@@ -421,10 +328,7 @@ fn environment_variable() {
     std::env::set_var("MY_VAR_TO_TEST", "GREAT_VALUE");
 
     let s = r#"{"var" : ${MY_VAR_TO_TEST} }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["var"].as_string().unwrap(), "GREAT_VALUE");
 }
@@ -436,8 +340,7 @@ fn environment_variable_disabled() {
     let s = r#"{"var" : ${MY_VAR_TO_TEST} }"#;
     let doc: Hocon = dbg!(HoconLoader::new().no_system().load_str(dbg!(s)))
         .unwrap()
-        .hocon()
-        .unwrap();
+        .hocon();
 
     assert_eq!(doc["var"], Hocon::BadValue);
 }
@@ -445,10 +348,7 @@ fn environment_variable_disabled() {
 #[test]
 fn parse_triple_quote() {
     let s = r#"{"a" : """my "single line" string""" }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_string().unwrap(), r#"my "single line" string"#);
 }
@@ -459,10 +359,7 @@ fn parse_multiline_string() {
 multi
 line
 string""" }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(
         doc["a"].as_string().unwrap(),
@@ -476,10 +373,7 @@ string"#
 #[test]
 fn parse_triple_quote_with_extra_quote() {
     let s = r#"{"a" : """foo"""" }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_string().unwrap(), r#"foo""#);
 }
@@ -490,10 +384,7 @@ fn parse_multiple_triple_quote_strings() {
 multi
 line
 string"""""}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"].as_string().unwrap(), r#"foo""#);
     assert_eq!(doc["b"].as_string().unwrap(), r#"hohoho"#);
@@ -509,10 +400,7 @@ string"""#
 #[test]
 fn parse_concat_objects() {
     let s = r#"{"a": {"a": 1} {"b": 2}}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"]["a"].as_i64().unwrap(), 1);
     assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
@@ -524,10 +412,7 @@ fn parse_concat_objects_with_substitution() {
         "a": {"a": 1}
         "b": ${a} {"b": 2}
     }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"]["a"].as_i64().unwrap(), 1);
     assert_eq!(doc["b"]["a"].as_i64().unwrap(), 1);
@@ -540,10 +425,7 @@ fn parse_concat_objects_with_self_substitution() {
         "a": {"a": 1}
         "a": ${a} {"b": 2}
     }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"]["a"].as_i64().unwrap(), 1);
     assert_eq!(doc["a"]["b"].as_i64().unwrap(), 2);
@@ -552,10 +434,7 @@ fn parse_concat_objects_with_self_substitution() {
 #[test]
 fn parse_concat_arrays() {
     let s = r#"{a : [ 1, 2 ] [ 3, 4 ]}"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
@@ -569,7 +448,7 @@ fn parse_concat_arrays_with_substitution() {
         a : [ 1, 2 ]
         b : ${a} [ 3, 4 ]
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
@@ -586,7 +465,7 @@ fn parse_concat_arrays_with_substitution_and_replace() {
         b : ${a} [ 3, 4 ]
         b : [ 5, 6 ]
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
@@ -602,7 +481,7 @@ fn parse_replace_array() {
         a : [ 1, 2, 3, 4 ]
         a : [ 5, 6 ]
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 5);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 6);
@@ -616,10 +495,7 @@ fn parse_concat_arrays_with_self_substitution() {
         a : [ 1, 2 ]
         a : ${a} [ 3, 4 ]
     }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
-        .unwrap()
-        .hocon()
-        .unwrap();
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon();
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
@@ -633,7 +509,7 @@ fn parse_concat_arrays_with_plus_equal() {
         a += 1
         a += 2
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
@@ -646,7 +522,7 @@ fn parse_concat_arrays_with_plus_equal_with_init() {
         a += 2
         "a" += 3
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"][0].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1].as_i64().unwrap(), 2);
@@ -659,7 +535,7 @@ fn parse_concat_arrays_with_plus_equal_with_object() {
         a += { b : 1 }
         a += { b : 2 }
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"][0]["b"].as_i64().unwrap(), 1);
     assert_eq!(doc["a"][1]["b"].as_i64().unwrap(), 2);
@@ -670,7 +546,7 @@ fn parse_null_value() {
     let s = r#"{
         a = null
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon()).unwrap();
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s))).unwrap().hocon());
 
     assert_eq!(doc["a"], Hocon::Null);
 }

@@ -162,14 +162,20 @@ impl HoconInternal {
                     include_config
                         .read_file()
                         .and_then(|s| include_config.parse_str_to_internal(s))
-                        .map_err(|_| crate::error::HoconError::IncludeError)
+                        .map_err(|_| crate::error::HoconError::IncludeError {
+                            path: String::from(path),
+                        })
                 }
                 #[cfg(feature = "url-support")]
-                Include::Url(url) => config
-                    .load_url(url)
-                    .map_err(|_| crate::error::HoconError::IncludeError),
+                Include::Url(url) => {
+                    config
+                        .load_url(url)
+                        .map_err(|_| crate::error::HoconError::IncludeError {
+                            path: String::from(url),
+                        })
+                }
                 #[cfg(not(feature = "url-support"))]
-                _ => Err(crate::error::HoconError::IncludeError),
+                _ => Err(crate::error::HoconError::DisabledExternalUrError),
             }
         } {
             Self {
@@ -227,7 +233,7 @@ impl HoconInternal {
         }
     }
 
-    pub(crate) fn merge(self) -> Result<HoconIntermediate, failure::Error> {
+    pub(crate) fn merge(self) -> HoconIntermediate {
         let root = Rc::new(Child {
             key: HoconValue::BadValue,
             value: RefCell::new(Node::Node {
@@ -363,9 +369,9 @@ impl HoconInternal {
             last_path_encoutered = current_path;
         }
 
-        Ok(HoconIntermediate {
+        HoconIntermediate {
             tree: Rc::try_unwrap(root).unwrap().value.into_inner(),
-        })
+        }
     }
 }
 
