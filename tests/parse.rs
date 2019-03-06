@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-// use serde::Deserialize;
-
 use hocon::{Error, Hocon, HoconLoader};
 
 #[test]
@@ -237,16 +235,8 @@ fn wrong_index() {
         .hocon()
         .expect("during test");
 
-    if let Hocon::BadValue(Error::KeyNotFound) = doc["missing"] {
-
-    } else {
-        assert!(false);
-    }
-    if let Hocon::BadValue(Error::KeyNotFound) = doc[0] {
-
-    } else {
-        assert!(false);
-    }
+    assert_eq!(doc["missing"], Hocon::BadValue(Error::MissingKey));
+    assert_eq!(doc[0], Hocon::BadValue(Error::InvalidKey));
 }
 
 #[test]
@@ -381,7 +371,12 @@ fn parse_missing_substitution() {
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["a"]["c"], Hocon::BadValue(Error::KeyNotFound));
+    assert_eq!(
+        doc["a"]["c"],
+        Hocon::BadValue(Error::KeyNotFound {
+            key: String::from("b")
+        })
+    );
 }
 
 #[test]
@@ -448,7 +443,12 @@ fn environment_variable_disabled() {
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["var"], Hocon::BadValue(Error::KeyNotFound));
+    assert_eq!(
+        doc["var"],
+        Hocon::BadValue(Error::KeyNotFound {
+            key: String::from("MY_VAR_TO_TEST")
+        })
+    );
 }
 
 #[test]
@@ -706,4 +706,13 @@ fn parse_null_value() {
     .expect("during test");
 
     assert_eq!(doc["a"], Hocon::Null);
+}
+
+#[test]
+fn parse_include_from_str() {
+    let s = r#"{"a":5, include "data/basic.conf" }"#;
+    let loader = dbg!(HoconLoader::new().strict().load_str(dbg!(s)));
+
+    assert!(loader.is_err());
+    assert_eq!(loader.err(), Some(hocon::Error::IncludeNotAllowedFromStr))
 }

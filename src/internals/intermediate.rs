@@ -108,7 +108,13 @@ impl Node {
                         match children
                             .iter()
                             .find(|child| child.key == first)
-                            .ok_or(crate::Error::KeyNotFound)
+                            .ok_or(crate::Error::KeyNotFound {
+                                key: path
+                                    .into_iter()
+                                    .map(|v| v.string_value())
+                                    .collect::<Vec<_>>()
+                                    .join("."),
+                            })
                             .and_then(|child| child.find_key(config, remaining))
                         {
                             Ok(n) => n,
@@ -119,7 +125,13 @@ impl Node {
             }
             _ => Ok(Node::Leaf(bad_value_or_err!(
                 config,
-                crate::Error::KeyNotFound
+                crate::Error::KeyNotFound {
+                    key: path
+                        .into_iter()
+                        .map(|v| v.string_value())
+                        .collect::<Vec<_>>()
+                        .join(".")
+                }
             ))),
         }
     }

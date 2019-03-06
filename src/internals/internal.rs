@@ -152,11 +152,18 @@ impl HoconInternal {
         included: Include,
         config: &HoconLoaderConfig,
     ) -> Result<Self, crate::Error> {
-        if config.include_depth > config.max_include_depth || config.file_meta.is_none() {
+        if config.include_depth > config.max_include_depth {
             Ok(Self {
                 internal: vec![(
                     vec![HoconValue::String(String::from(included.included()))],
                     bad_value_or_err!(config, crate::Error::TooManyIncludes),
+                )],
+            })
+        } else if config.file_meta.is_none() {
+            Ok(Self {
+                internal: vec![(
+                    vec![HoconValue::String(String::from(included.included()))],
+                    bad_value_or_err!(config, crate::Error::IncludeNotAllowedFromStr),
                 )],
             })
         } else {

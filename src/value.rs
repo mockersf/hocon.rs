@@ -1,7 +1,68 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
-/// HOCON document
+/// An HOCON document
+///
+/// Values can be retrieved as a basic type, with basic cast between some of the value types:
+/// [Automatic type conversions](https://github.com/lightbend/config/blob/master/HOCON.md#automatic-type-conversions).
+/// If the value if not of the expected type, a `None` will be returned.
+///
+/// If the value is a [`Hocon::Hash`](enum.Hocon.html#variant.Hash), its values can be
+/// accessed by indexing with a `str`, as in `hash[key]`. If the value is an
+/// [`Hocon::Array`](enum.Hocon.html#variant.Array), its values can be accessed by indexing
+/// with a `usize`. An [`Hocon::Hash`](enum.Hocon.html#variant.Hash) whose keys can be
+/// converted to numeric values (`"0"`, `"1"`, ...) can be indexed with a `usize` following
+/// the rules described in
+/// [Conversion of numerically-indexed objects to arrays](https://github.com/lightbend/config/blob/master/HOCON.md#conversion-of-numerically-indexed-objects-to-arrays).
+///
+/// Indexing a `Hocon` value with a wrong key type, or a type of value that can't be indexed
+/// will return a [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue) with an error of type
+/// [`crate::Error::InvalidKey`](enum.Error.html#variant.InvalidKey).
+///
+/// Indexing a `Hocon` value with a key that is not present will return a
+/// [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue) with an error of type
+/// [`crate::Error::MissingKey`](enum.Error.html#variant.MissingKey).
+///
+/// Values can also be accessed as a `Duration` or a size following the rules described in
+/// [Units format](https://github.com/lightbend/config/blob/master/HOCON.md#units-format).
+///
+/// # Usage
+///
+/// ```rust
+/// # use hocon::{HoconLoader, Error, Hocon};
+/// # fn main() -> Result<(), failure::Error> {
+/// // Accessing a value of the expected type
+/// assert_eq!(
+///     HoconLoader::new().load_str(r#"{ a: 7 }"#)?.hocon()?["a"].as_i64(),
+///     Some(7)
+/// );
+///
+/// // Accessing a value with automatic conversion
+/// assert_eq!(
+///     HoconLoader::new().load_str(r#"{ a: off }"#)?.hocon()?["a"].as_bool(),
+///     Some(false)
+/// );
+///
+/// // Accessing an Array
+/// assert_eq!(
+///     HoconLoader::new().load_str(r#"{ a: [ first, second ] }"#)?.hocon()?["a"][0].as_string(),
+///     Some(String::from("first"))
+/// );
+///
+/// // Accessing an Hash with a missing key
+/// assert_eq!(
+///     HoconLoader::new().load_str(r#"{ a: 7 }"#)?.hocon()?["b"],
+///     Hocon::BadValue(Error::MissingKey)
+/// );
+///
+/// // Accessing an Hash as if it was an Array
+/// assert_eq!(
+///     HoconLoader::new().load_str(r#"{ a: 7 }"#)?.hocon()?[0],
+///     Hocon::BadValue(Error::InvalidKey)
+/// );
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Hocon {
     /// A floating value
@@ -22,7 +83,8 @@ pub enum Hocon {
     BadValue(crate::Error),
 }
 
-static NOT_FOUND: Hocon = Hocon::BadValue(crate::Error::KeyNotFound);
+static NOT_FOUND: Hocon = Hocon::BadValue(crate::Error::MissingKey);
+static INVALID_KEY: Hocon = Hocon::BadValue(crate::Error::InvalidKey);
 
 impl<'a> Index<&'a str> for Hocon {
     type Output = Hocon;
@@ -30,7 +92,7 @@ impl<'a> Index<&'a str> for Hocon {
     fn index(&self, idx: &'a str) -> &Self::Output {
         match self {
             Hocon::Hash(hash) => hash.get(idx).unwrap_or(&NOT_FOUND),
-            _ => &NOT_FOUND,
+            _ => &INVALID_KEY,
         }
     }
 }
@@ -49,9 +111,9 @@ impl Index<usize> for Hocon {
                 keys_as_usize
                     .get(idx)
                     .and_then(|(k, _)| hash.get(*k))
-                    .unwrap_or(&NOT_FOUND)
+                    .unwrap_or(&INVALID_KEY)
             }
-            _ => &NOT_FOUND,
+            _ => &INVALID_KEY,
         }
     }
 }
@@ -148,7 +210,21 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_bytes(&self) -> Option<f64> {
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// # let example = r#"{ size = 1.5KiB }"#;
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(example)?.hocon()?["size"].as_bytes(),
+    ///     Some(1536.0)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn as_bytes(&self) -> Option<f64> {
         match *self {
             Hocon::Integer(ref i) => Some(*i as f64),
             Hocon::Real(ref f) => Some(*f),
@@ -182,7 +258,7 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_milliseconds(&self) -> Option<f64> {
+    pub fn as_milliseconds(&self) -> Option<f64> {
         match *self {
             Hocon::Integer(ref i) => Some(*i as f64),
             Hocon::Real(ref f) => Some(*f),
@@ -209,8 +285,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_nanoseconds(&self) -> Option<f64> {
-        self.get_milliseconds().map(|v| v * 10.0f64.powf(6.0))
+    pub fn as_nanoseconds(&self) -> Option<f64> {
+        self.as_milliseconds().map(|v| v * 10.0f64.powf(6.0))
     }
 
     /// Try to return a value as a duration in microseconds
@@ -219,8 +295,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_microseconds(&self) -> Option<f64> {
-        self.get_milliseconds().map(|v| v * 10.0f64.powf(3.0))
+    pub fn as_microseconds(&self) -> Option<f64> {
+        self.as_milliseconds().map(|v| v * 10.0f64.powf(3.0))
     }
 
     /// Try to return a value as a duration in seconds
@@ -229,8 +305,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_seconds(&self) -> Option<f64> {
-        self.get_milliseconds().map(|v| v * 10.0f64.powf(-3.0))
+    pub fn as_seconds(&self) -> Option<f64> {
+        self.as_milliseconds().map(|v| v * 10.0f64.powf(-3.0))
     }
 
     /// Try to return a value as a duration in minutes
@@ -239,8 +315,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_minutes(&self) -> Option<f64> {
-        self.get_milliseconds()
+    pub fn as_minutes(&self) -> Option<f64> {
+        self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0)
     }
 
@@ -250,8 +326,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_hours(&self) -> Option<f64> {
-        self.get_milliseconds()
+    pub fn as_hours(&self) -> Option<f64> {
+        self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0)
     }
 
@@ -261,8 +337,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_days(&self) -> Option<f64> {
-        self.get_milliseconds()
+    pub fn as_days(&self) -> Option<f64> {
+        self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0)
     }
 
@@ -272,8 +348,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_weeks(&self) -> Option<f64> {
-        self.get_milliseconds()
+    pub fn as_weeks(&self) -> Option<f64> {
+        self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 7.0)
     }
 
@@ -283,8 +359,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_months(&self) -> Option<f64> {
-        self.get_milliseconds()
+    pub fn as_months(&self) -> Option<f64> {
+        self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 30.0)
     }
 
@@ -294,8 +370,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_years(&self) -> Option<f64> {
-        self.get_milliseconds()
+    pub fn as_years(&self) -> Option<f64> {
+        self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 365.0)
     }
 
@@ -305,8 +381,8 @@ impl Hocon {
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
-    pub fn get_duration(&self) -> Option<std::time::Duration> {
-        self.get_nanoseconds()
+    pub fn as_duration(&self) -> Option<std::time::Duration> {
+        self.as_nanoseconds()
             .map(|v| std::time::Duration::from_nanos(v as u64))
     }
 }
@@ -323,8 +399,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("test")));
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -335,8 +411,8 @@ mod tests {
         assert_eq!(val.as_f64(), Some(5.6));
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("5.6")));
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -347,8 +423,8 @@ mod tests {
         assert_eq!(val.as_f64(), Some(5.0));
         assert_eq!(val.as_i64(), Some(5));
         assert_eq!(val.as_string(), Some(String::from("5")));
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -359,8 +435,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("false")));
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -371,8 +447,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("true")));
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -383,8 +459,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), None);
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -395,8 +471,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), None);
-        assert_eq!(val[0], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -410,7 +486,7 @@ mod tests {
         assert_eq!(val[0], Hocon::Integer(5));
         assert_eq!(val[1], Hocon::Integer(6));
         assert_eq!(val[2], NOT_FOUND);
-        assert_eq!(val["a"], NOT_FOUND);
+        assert_eq!(val["a"], INVALID_KEY);
     }
 
     #[test]
@@ -424,7 +500,7 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), None);
-        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val[0], INVALID_KEY);
         assert_eq!(val["a"], Hocon::Integer(5));
         assert_eq!(val["b"], Hocon::Integer(6));
         assert_eq!(val["c"], NOT_FOUND);
@@ -459,7 +535,7 @@ mod tests {
         assert_eq!(val.as_string(), None);
         assert_eq!(val[0], Hocon::Integer(5));
         assert_eq!(val[1], Hocon::Integer(7));
-        assert_eq!(val[2], NOT_FOUND);
+        assert_eq!(val[2], INVALID_KEY);
         assert_eq!(val["0"], Hocon::Integer(5));
         assert_eq!(val["a"], Hocon::Integer(6));
         assert_eq!(val["2"], Hocon::Integer(7));
@@ -478,87 +554,87 @@ mod tests {
             Hocon::Boolean(false),
         ]);
 
-        assert_eq!(val[0].get_bytes(), Some(5.0));
-        assert_eq!(val[1].get_bytes(), Some(6.5));
-        assert_eq!(val[2].get_bytes(), Some(7.0));
-        assert_eq!(val[3].get_bytes(), Some(8.0 * 1_000.0));
-        assert_eq!(val[4].get_bytes(), Some(9.0 * 10.0f64.powf(18.0)));
-        assert_eq!(val[5].get_bytes(), Some(10.5 * 2.0f64.powf(20.0)));
-        assert_eq!(val[6].get_bytes(), None);
-        assert_eq!(val[7].get_bytes(), None);
+        assert_eq!(val[0].as_bytes(), Some(5.0));
+        assert_eq!(val[1].as_bytes(), Some(6.5));
+        assert_eq!(val[2].as_bytes(), Some(7.0));
+        assert_eq!(val[3].as_bytes(), Some(8.0 * 1_000.0));
+        assert_eq!(val[4].as_bytes(), Some(9.0 * 10.0f64.powf(18.0)));
+        assert_eq!(val[5].as_bytes(), Some(10.5 * 2.0f64.powf(20.0)));
+        assert_eq!(val[6].as_bytes(), None);
+        assert_eq!(val[7].as_bytes(), None);
     }
 
     #[test]
     fn access_on_bytes_all_bytes_units() {
         for unit in vec!["B", "b", "byte", "bytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0));
         }
 
         for unit in vec!["kB", "kilobyte", "kilobytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(3.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(3.0)));
         }
         for unit in vec!["MB", "megabyte", "megabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(6.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(6.0)));
         }
         for unit in vec!["GB", "gigabyte", "gigabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(9.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(9.0)));
         }
         for unit in vec!["TB", "terabyte", "terabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(12.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(12.0)));
         }
         for unit in vec!["PB", "petabyte", "petabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(15.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(15.0)));
         }
         for unit in vec!["EB", "exabyte", "exabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(18.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(18.0)));
         }
         for unit in vec!["ZB", "zettabyte", "zettabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(21.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(21.0)));
         }
         for unit in vec!["YB", "yottabyte", "yottabytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 10.0f64.powf(24.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 10.0f64.powf(24.0)));
         }
 
         for unit in vec!["K", "k", "Ki", "KiB", "kibibyte", "kibibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(10.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(10.0)));
         }
         for unit in vec!["M", "m", "Mi", "MiB", "mebibyte", "mebibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(20.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(20.0)));
         }
         for unit in vec!["G", "g", "Gi", "GiB", "gibibyte", "gibibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(30.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(30.0)));
         }
         for unit in vec!["T", "t", "Ti", "TiB", "tebibyte", "tebibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(40.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(40.0)));
         }
         for unit in vec!["P", "p", "Pi", "PiB", "pebibyte", "pebibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(50.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(50.0)));
         }
         for unit in vec!["E", "e", "Ei", "EiB", "exbibyte", "exbibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(60.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(60.0)));
         }
         for unit in vec!["Z", "z", "Zi", "ZiB", "zebibyte", "zebibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(70.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(70.0)));
         }
         for unit in vec!["Y", "y", "Yi", "YiB", "yobibyte", "yobibytes"] {
             let val = Hocon::Array(vec![Hocon::String(format!("8{}", unit))]);
-            assert_eq!(dbg!(val)[0].get_bytes(), Some(8.0 * 2.0f64.powf(80.0)));
+            assert_eq!(dbg!(val)[0].as_bytes(), Some(8.0 * 2.0f64.powf(80.0)));
         }
     }
 
@@ -577,54 +653,54 @@ mod tests {
         hm.insert(String::from("y"), Hocon::String(String::from("1y")));
         let val = Hocon::Hash(hm);
 
-        assert_eq!(val["ns"].get_nanoseconds(), Some(1.0));
+        assert_eq!(val["ns"].as_nanoseconds(), Some(1.0));
         assert_eq!(
-            val["ns"].get_duration(),
+            val["ns"].as_duration(),
             Some(std::time::Duration::from_nanos(1))
         );
-        assert_eq!(val["us"].get_microseconds(), Some(1.0));
+        assert_eq!(val["us"].as_microseconds(), Some(1.0));
         assert_eq!(
-            val["us"].get_duration(),
+            val["us"].as_duration(),
             Some(std::time::Duration::from_micros(1))
         );
-        assert_eq!(val["ms"].get_milliseconds(), Some(1.0));
+        assert_eq!(val["ms"].as_milliseconds(), Some(1.0));
         assert_eq!(
-            val["ms"].get_duration(),
+            val["ms"].as_duration(),
             Some(std::time::Duration::from_millis(1))
         );
-        assert_eq!(val["s"].get_seconds(), Some(1.0));
+        assert_eq!(val["s"].as_seconds(), Some(1.0));
         assert_eq!(
-            val["s"].get_duration(),
+            val["s"].as_duration(),
             Some(std::time::Duration::from_secs(1))
         );
-        assert_eq!(val["m"].get_minutes(), Some(1.0));
+        assert_eq!(val["m"].as_minutes(), Some(1.0));
         assert_eq!(
-            val["m"].get_duration(),
+            val["m"].as_duration(),
             Some(std::time::Duration::from_secs(60))
         );
-        assert_eq!(val["h"].get_hours(), Some(1.0));
+        assert_eq!(val["h"].as_hours(), Some(1.0));
         assert_eq!(
-            val["h"].get_duration(),
+            val["h"].as_duration(),
             Some(std::time::Duration::from_secs(60 * 60))
         );
-        assert_eq!(val["d"].get_days(), Some(1.0));
+        assert_eq!(val["d"].as_days(), Some(1.0));
         assert_eq!(
-            val["d"].get_duration(),
+            val["d"].as_duration(),
             Some(std::time::Duration::from_secs(60 * 60 * 24))
         );
-        assert_eq!(val["w"].get_weeks(), Some(1.0));
+        assert_eq!(val["w"].as_weeks(), Some(1.0));
         assert_eq!(
-            val["w"].get_duration(),
+            val["w"].as_duration(),
             Some(std::time::Duration::from_secs(60 * 60 * 24 * 7))
         );
-        assert_eq!(val["mo"].get_months(), Some(1.0));
+        assert_eq!(val["mo"].as_months(), Some(1.0));
         assert_eq!(
-            val["mo"].get_duration(),
+            val["mo"].as_duration(),
             Some(std::time::Duration::from_secs(60 * 60 * 24 * 30))
         );
-        assert_eq!(val["y"].get_years(), Some(1.0));
+        assert_eq!(val["y"].as_years(), Some(1.0));
         assert_eq!(
-            val["y"].get_duration(),
+            val["y"].as_duration(),
             Some(std::time::Duration::from_secs(60 * 60 * 24 * 365))
         );
     }

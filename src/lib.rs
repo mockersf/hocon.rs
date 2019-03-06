@@ -23,18 +23,25 @@
 //!
 //! # Examples
 //!
+//! ## Reading from a string and getting value directly
+//!
 //! ```rust
 //! use hocon::HoconLoader;
 //!
 //! # fn main() -> Result<(), failure::Error> {
-//! let s = r#"{"a":5}"#;
-//! let doc = HoconLoader::new().load_str(s)?.hocon()?;
+//! let s = r#"{ a: 7 }"#;
+//!
+//! let doc = HoconLoader::new()
+//!     .load_str(s)?
+//!     .hocon()?;
+//!
 //! let a = doc["a"].as_i64();
+//! assert_eq!(a, Some(7));
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! Support serde to deserialize to a `struct`
+//! ## Deserializing to a struct using `serde`
 //!
 //! ```rust
 //! use serde::Deserialize;
@@ -49,13 +56,65 @@
 //! }
 //!
 //! # fn main() -> Result<(), failure::Error> {
-//! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
+//! let s = r#"{
+//!     host: 127.0.0.1
+//!     port: 80
+//!     auto_connect: false
+//! }"#;
 //!
 //! # #[cfg(feature = "serde-support")]
-//! let conf: Configuration = HoconLoader::new().load_str(s)?.resolve()?;
+//! let conf: Configuration = HoconLoader::new()
+//!     .load_str(s)?
+//!     .resolve()?;
 //! # Ok(())
 //! # }
 //!  ```
+//!
+//! ## Reading from a file
+//!
+//! Example file:
+//! [tests/data/basic.conf](https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf)
+//!
+//! ```rust
+//! use hocon::HoconLoader;
+//!
+//! # fn main() -> Result<(), failure::Error> {
+//! let doc = HoconLoader::new()
+//!     .load_file("tests/data/basic.conf")?
+//!     .hocon()?;
+//!
+//! let a = doc["a"].as_i64();
+//! assert_eq!(a, Some(5));
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Reading from several documents
+//!
+//! Example file:
+//! [tests/data/basic.conf](https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf)
+//!
+//! ```rust
+//! use hocon::HoconLoader;
+//!
+//! # fn main() -> Result<(), failure::Error> {
+//! let s = r#"{
+//!     a: will be changed
+//!     unchanged: original value
+//! }"#;
+//!
+//! let doc = HoconLoader::new()
+//!     .load_str(s)?
+//!     .load_file("tests/data/basic.conf")?
+//!     .hocon()?;
+//!
+//! let a = doc["a"].as_i64();
+//! assert_eq!(a, Some(5));
+//! let unchanged = doc["unchanged"].as_string();
+//! assert_eq!(unchanged, Some(String::from("original value")));
+//! # Ok(())
+//! # }
+//! ```
 //!
 //! # Features
 //!
@@ -109,7 +168,33 @@ pub(crate) use loader_config::*;
 #[cfg(feature = "serde-support")]
 mod serde;
 
-/// Helper to load an HOCON file
+/// Helper to load an HOCON file. This is used to set up the HOCON loader's option,
+/// like strict mode, disabling system environment, and to buffer several documents.
+///
+/// # Strict mode
+///
+/// If strict mode is enabled with [`strict()`](struct.HoconLoader.html#method.strict),
+/// loading a document will return the first error encountered. Otherwise, most errors
+/// will be wrapped in a [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue).
+///
+/// # Usage
+///
+/// ```rust
+/// # use hocon::HoconLoader;
+/// # fn main() -> Result<(), failure::Error> {
+/// let mut loader = HoconLoader::new()         // Creating new loader with default configuration
+///     .no_system()                            // Disable substituting from system environment
+///     .no_url_include();                      // Disable including files from URLs
+///
+/// let default_values = r#"{ a = 7 }"#;
+/// loader = loader.load_str(default_values)?   // Load values from a string
+///     .load_file("tests/data/basic.conf")?    // Load first file
+///     .load_file("tests/data/test01.conf")?;  // Load another file
+///
+/// let hocon = loader.hocon()?;                // Create the Hocon document from the loaded sources
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct HoconLoader {
     config: HoconLoaderConfig,
@@ -123,7 +208,7 @@ impl Default for HoconLoader {
 }
 
 impl HoconLoader {
-    /// New default `HoconLoader`
+    /// New `HoconLoader` with default configuration
     pub fn new() -> Self {
         Self {
             config: HoconLoaderConfig::default(),
@@ -132,6 +217,44 @@ impl HoconLoader {
     }
 
     /// Disable System environment substitutions
+    ///
+    /// # Example HOCON document
+    ///
+    /// ```no_test
+    /// "system" : {
+    ///     "home"  : ${HOME},
+    ///     "pwd"   : ${PWD},
+    ///     "shell" : ${SHELL},
+    ///     "lang"  : ${LANG},
+    /// }
+    /// ```
+    ///
+    /// with system:
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// # std::env::set_var("SHELL", "/bin/bash");
+    /// # let example = r#"{system.shell: ${SHELL}}"#;
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(example)?.hocon()?["system"]["shell"],
+    ///     Hocon::String(String::from("/bin/bash"))
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// without system:
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// # let example = r#"{system.shell: ${SHELL}}"#;
+    /// assert_eq!(
+    ///     HoconLoader::new().no_system().load_str(example)?.hocon()?["system"]["shell"],
+    ///     Hocon::BadValue(Error::KeyNotFound { key: String::from("SHELL") })
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn no_system(&self) -> Self {
         Self {
             config: HoconLoaderConfig {
@@ -142,9 +265,43 @@ impl HoconLoader {
         }
     }
 
-    /// Disable loading external urls
+    /// Disable loading included files from external urls.
+    ///
+    /// # Example HOCON document
+    ///
+    /// ```no_test
+    /// include url("https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf")
+    /// ```
+    ///
+    /// with url include:
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_file("tests/data/include_url.conf")?.hocon()?["d"],
+    ///     Hocon::Boolean(true)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// without url include:
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().no_url_include().load_file("tests/data/include_url.conf")?.hocon()?["d"],
+    ///     Hocon::BadValue(Error::MissingKey)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Feature
+    ///
+    /// This method depends on feature `url-support`
     #[cfg(feature = "url-support")]
-    pub fn no_external_url(&self) -> Self {
+    pub fn no_url_include(&self) -> Self {
         Self {
             config: HoconLoaderConfig {
                 external_url: false,
@@ -154,8 +311,43 @@ impl HoconLoader {
         }
     }
 
-    /// Returns an error when encountering a `Hocon::BadValue`
-    #[cfg(feature = "url-support")]
+    /// Sets the HOCON loader to return the first [`Error`](enum.Error.html) encoutered instead
+    /// of wrapping it in a [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue) and
+    /// continuing parsing
+    ///
+    /// # Example HOCON document
+    ///
+    /// ```no_test
+    /// {
+    ///     a = ${b}
+    /// }
+    /// ```
+    ///
+    /// in permissive mode:
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// # let example = r#"{ a = ${b} }"#;
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(example)?.hocon()?["a"],
+    ///     Hocon::BadValue(Error::KeyNotFound { key: String::from("b") })
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// in strict mode:
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// # let example = r#"{ a = ${b} }"#;
+    /// assert_eq!(
+    ///     HoconLoader::new().strict().load_str(example)?.hocon(),
+    ///     Err(Error::KeyNotFound { key: String::from("b") })
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn strict(&self) -> Self {
         Self {
             config: HoconLoaderConfig {
@@ -166,12 +358,11 @@ impl HoconLoader {
         }
     }
 
-    /// Set a new max include depth, by default 10
-    #[cfg(feature = "url-support")]
-    pub fn max_include_depth(&self, new_depth: u8) -> Self {
+    /// Set a new maximum include depth, by default 10
+    pub fn max_include_depth(&self, new_max_depth: u8) -> Self {
         Self {
             config: HoconLoaderConfig {
-                max_include_depth: new_depth,
+                max_include_depth: new_max_depth,
                 ..self.config.clone()
             },
             ..self.clone()
@@ -185,7 +376,87 @@ impl HoconLoader {
         })
     }
 
+    /// Load a string containing an `Hocon` document. Includes are not supported when
+    /// loading from a string
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::Parse`](enum.Error.html#variant.Parse) if the document is invalid
+    ///
+    /// # Additional errors in strict mode
+    ///
+    /// * [`Error::IncludeNotAllowedFromStr`](enum.Error.html#variant.IncludeNotAllowedFromStr)
+    /// if there is an include in the string
+    pub fn load_str(self, s: &str) -> Result<Self, Error> {
+        self.load_from_str_of_conf_file(FileRead {
+            hocon: Some(String::from(s)),
+            ..Default::default()
+        })
+    }
+
+    /// Load the HOCON configuration file containing an `Hocon` document
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::File`](enum.Error.html#variant.File) if there was an error reading the
+    /// file content
+    /// * [`Error::Parse`](enum.Error.html#variant.Parse) if the document is invalid
+    ///
+    /// # Additional errors in strict mode
+    ///
+    /// * [`Error::TooManyIncludes`](enum.Error.html#variant.TooManyIncludes)
+    /// if there are too many included files within included files. The limit can be
+    /// changed with [`max_include_depth`](struct.HoconLoader.html#method.max_include_depth)
+    pub fn load_file(&self, path: &str) -> Result<Self, Error> {
+        let mut file_path = Path::new(path).to_path_buf();
+        if !file_path.has_root() {
+            let mut current_path = std::env::current_dir().map_err(|_| Error::File {
+                path: String::from(path),
+            })?;
+            current_path.push(path);
+            file_path = current_path;
+        }
+        let conf = self.config.with_file(file_path);
+        let contents = conf.read_file().map_err(|err| Error::File {
+            path: String::from(err.name().unwrap_or(path)),
+        })?;
+        Self {
+            config: conf,
+            ..self.clone()
+        }
+        .load_from_str_of_conf_file(contents)
+    }
+
+    /// Load the documents as HOCON
+    ///
+    /// # Errors in strict mode
+    ///
+    /// * [`Error::Include`](enum.Error.html#variant.Include) if there was an issue with an
+    /// included file
+    /// * [`Error::KeyNotFound`](enum.Error.html#variant.KeyNotFound) if there is a substitution
+    /// with a key that is not present in the document
+    /// * [`Error::DisabledExternalUrl`](enum.Error.html#variant.DisabledExternalUrl) if crate
+    /// was built without feature `url-support` and an `include url("...")` was found
+    pub fn hocon(self) -> Result<Hocon, Error> {
+        let config = &self.config;
+        self.internal.merge(config)?.finalize(config)
+    }
+
     /// Deserialize the loaded documents to the target type
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::Deserialization`](enum.Error.html#variant.Deserialization) if there was a
+    /// serde error during deserialization (missing required field, type issue, ...)
+    ///
+    /// # Additional errors in strict mode
+    ///
+    /// * [`Error::Include`](enum.Error.html#variant.Include) if there was an issue with an
+    /// included file
+    /// * [`Error::KeyNotFound`](enum.Error.html#variant.KeyNotFound) if there is a substitution
+    /// with a key that is not present in the document
+    /// * [`Error::DisabledExternalUrl`](enum.Error.html#variant.DisabledExternalUrl) if crate
+    /// was built without feature `url-support` and an `include url("...")` was found
     #[cfg(feature = "serde-support")]
     pub fn resolve<'de, T>(self) -> Result<T, Error>
     where
@@ -196,35 +467,6 @@ impl HoconLoader {
                 message: err.message,
             })?,
         )
-    }
-
-    /// Load the documents as HOCON
-    pub fn hocon(self) -> Result<Hocon, Error> {
-        let config = &self.config;
-        self.internal.merge(config)?.finalize(config)
-    }
-
-    /// Load a string containing an `Hocon` document. Includes are not supported when
-    /// loading from a string
-    pub fn load_str(self, s: &str) -> Result<Self, Error> {
-        self.load_from_str_of_conf_file(FileRead {
-            hocon: Some(String::from(s)),
-            ..Default::default()
-        })
-    }
-
-    /// Load the HOCON configuration file containing an `Hocon` document
-    pub fn load_file(&self, path: &str) -> Result<Self, Error> {
-        let file_path = Path::new(path).to_path_buf();
-        let conf = self.config.with_file(file_path);
-        let contents = conf.read_file().map_err(|err| Error::File {
-            path: String::from(err.name().unwrap_or(path)),
-        })?;
-        Self {
-            config: conf,
-            ..self.clone()
-        }
-        .load_from_str_of_conf_file(contents)
     }
 }
 

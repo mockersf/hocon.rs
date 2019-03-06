@@ -169,7 +169,9 @@ impl HoconValue {
     pub(crate) fn string_value(self) -> String {
         match self {
             HoconValue::String(s) => s,
+            HoconValue::UnquotedString(s) => s,
             HoconValue::Null => String::from("null"),
+            HoconValue::Integer(i) => i.to_string(),
             _ => unreachable!(),
         }
     }
