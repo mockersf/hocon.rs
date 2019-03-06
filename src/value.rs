@@ -19,10 +19,10 @@ pub enum Hocon {
     /// A null value
     Null,
     /// A `BadValue`, marking an error in parsing or a missing value
-    BadValue(crate::HoconError),
+    BadValue(crate::Error),
 }
 
-static NOT_FOUND: Hocon = Hocon::BadValue(crate::HoconError::KeyNotFoundError);
+static NOT_FOUND: Hocon = Hocon::BadValue(crate::Error::KeyNotFound);
 
 impl<'a> Index<&'a str> for Hocon {
     type Output = Hocon;
@@ -389,7 +389,7 @@ mod tests {
 
     #[test]
     fn access_on_bad_value() {
-        let val = Hocon::BadValue(crate::HoconError::DisabledExternalUrlError);
+        let val = Hocon::BadValue(crate::Error::DisabledExternalUrl);
 
         assert_eq!(val.as_bool(), None);
         assert_eq!(val.as_f64(), None);

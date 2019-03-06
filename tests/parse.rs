@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 // use serde::Deserialize;
 
-use hocon::{Hocon, HoconError, HoconLoader};
+use hocon::{Error, Hocon, HoconLoader};
 
 #[test]
 fn parse_string() {
@@ -237,12 +237,12 @@ fn wrong_index() {
         .hocon()
         .expect("during test");
 
-    if let Hocon::BadValue(HoconError::KeyNotFoundError) = doc["missing"] {
+    if let Hocon::BadValue(Error::KeyNotFound) = doc["missing"] {
 
     } else {
         assert!(false);
     }
-    if let Hocon::BadValue(HoconError::KeyNotFoundError) = doc[0] {
+    if let Hocon::BadValue(Error::KeyNotFound) = doc[0] {
 
     } else {
         assert!(false);
@@ -381,7 +381,7 @@ fn parse_missing_substitution() {
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["a"]["c"], Hocon::BadValue(HoconError::KeyNotFoundError));
+    assert_eq!(doc["a"]["c"], Hocon::BadValue(Error::KeyNotFound));
 }
 
 #[test]
@@ -448,7 +448,7 @@ fn environment_variable_disabled() {
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["var"], Hocon::BadValue(HoconError::KeyNotFoundError));
+    assert_eq!(doc["var"], Hocon::BadValue(Error::KeyNotFound));
 }
 
 #[test]

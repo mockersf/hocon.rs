@@ -13,9 +13,15 @@
 
 //! HOCON
 //!
-//! Parse HOCON configuration files in Rust
+//! Parse HOCON configuration files in Rust following the
+//! [HOCON Specifications](https://github.com/lightbend/config/blob/master/HOCON.md).
 //!
-//! [HOCON Specifications](https://github.com/lightbend/config/blob/master/HOCON.md)
+//! This implementation goal is to be as permissive as possible, returning a
+//! [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue) when a correct value cannot be computed.
+//! [`strict`](struct.HoconLoader.html#method.strict) mode can be enabled to return an
+//! [`Error`](enum.Error.html) instead.
+//!
+//! # Examples
 //!
 //! ```rust
 //! use hocon::HoconLoader;
@@ -49,246 +55,59 @@
 //! let conf: Configuration = HoconLoader::new().load_str(s)?.resolve()?;
 //! # Ok(())
 //! # }
-//!  ````
+//!  ```
+//!
+//! # Features
+//!
+//! All features are enabled by default. They can be disabled to reduce dependencies.
+//!
+//! ### `url-support`
+//!
+//! This feature enable fetching URLs in includes  with `include url("http://mydomain.com/myfile.conf")` (see
+//! [spec](https://github.com/lightbend/config/blob/master/HOCON.md#include-syntax)). If disabled,
+//! includes will only load local files specified with `include "path/to/file.conf"` or
+//! `include file("path/to/file.conf")`.
+//!
+//! ### `serde-support`
+//!
+//! This feature enable deserializing to a `struct` implementing `Deserialize` using `serde`
+//!
+//! ```rust
+//! use serde::Deserialize;
+//!
+//! use hocon::HoconLoader;
+//!
+//! #[derive(Deserialize)]
+//! struct Configuration {
+//!     host: String,
+//!     port: u8,
+//!     auto_connect: bool,
+//! }
+//!
+//! # fn main() -> Result<(), failure::Error> {
+//! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
+//!
+//! # #[cfg(feature = "serde-support")]
+//! let conf: Configuration = HoconLoader::new().load_str(s)?.resolve()?;
+//! # Ok(())
+//! # }
+//!  ```
 //!
 
-use std::ffi::OsStr;
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 mod internals;
 mod parser;
 mod value;
 pub use value::Hocon;
 mod error;
-pub use error::HoconError;
+pub use error::Error;
 pub(crate) mod helper;
+mod loader_config;
+pub(crate) use loader_config::*;
 
 #[cfg(feature = "serde-support")]
 mod serde;
-
-#[derive(Debug, Clone)]
-pub(crate) enum FileType {
-    Properties,
-    Hocon,
-    Json,
-    All,
-}
-
-#[derive(Default, Debug)]
-pub(crate) struct FileRead {
-    properties: Option<String>,
-    json: Option<String>,
-    hocon: Option<String>,
-}
-impl FileRead {
-    fn from_file_type(ft: &FileType, s: String) -> Self {
-        match ft {
-            FileType::Properties => Self {
-                properties: Some(s),
-                ..Default::default()
-            },
-            FileType::Json => Self {
-                json: Some(s),
-                ..Default::default()
-            },
-            FileType::Hocon => Self {
-                hocon: Some(s),
-                ..Default::default()
-            },
-            FileType::All => unimplemented!(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct ConfFileMeta {
-    path: PathBuf,
-    file_name: String,
-    full_path: PathBuf,
-    file_type: FileType,
-}
-impl ConfFileMeta {
-    fn from_path(path: PathBuf) -> Self {
-        let file = path
-            .file_name()
-            .expect("got a path without a filename")
-            .to_str()
-            .expect("got invalid UTF-8 path");
-        let mut parent_path = path.clone();
-        parent_path.pop();
-
-        Self {
-            path: parent_path,
-            file_name: String::from(file),
-            full_path: path.clone(),
-            file_type: match Path::new(file).extension().and_then(OsStr::to_str) {
-                Some("properties") => FileType::Properties,
-                Some("json") => FileType::Json,
-                Some("conf") => FileType::Hocon,
-                _ => FileType::All,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct HoconLoaderConfig {
-    include_depth: usize,
-    file_meta: Option<ConfFileMeta>,
-    system: bool,
-    #[cfg(feature = "url-support")]
-    external_url: bool,
-    strict: bool,
-}
-
-impl Default for HoconLoaderConfig {
-    fn default() -> Self {
-        Self {
-            include_depth: 0,
-            file_meta: None,
-            system: true,
-            #[cfg(feature = "url-support")]
-            external_url: true,
-            strict: false,
-        }
-    }
-}
-
-impl HoconLoaderConfig {
-    pub(crate) fn included_from(&self) -> Self {
-        Self {
-            include_depth: self.include_depth + 1,
-            ..self.clone()
-        }
-    }
-
-    pub(crate) fn with_file(&self, path: PathBuf) -> Self {
-        match self.file_meta.as_ref() {
-            Some(file_meta) => Self {
-                file_meta: Some(ConfFileMeta::from_path(file_meta.clone().path.join(path))),
-                ..self.clone()
-            },
-            None => Self {
-                file_meta: Some(ConfFileMeta::from_path(path)),
-                ..self.clone()
-            },
-        }
-    }
-
-    pub(crate) fn parse_str_to_internal(
-        &self,
-        s: FileRead,
-    ) -> Result<internals::HoconInternal, HoconError> {
-        let mut internal = internals::HoconInternal::empty();
-        if let Some(properties) = s.properties {
-            internal = internal.add(
-                java_properties::read(properties.as_bytes())
-                    .map(internals::HoconInternal::from_properties)
-                    .map_err(|_| error::HoconError::ParseError)?,
-            );
-        };
-        if let Some(json) = s.json {
-            internal = internal.add(
-                parser::root(format!("{}\n\0", json).as_bytes(), self)
-                    .map_err(|_| error::HoconError::ParseError)?
-                    .1?,
-            );
-        };
-        if let Some(hocon) = s.hocon {
-            internal = internal.add(
-                parser::root(format!("{}\n\0", hocon).as_bytes(), self)
-                    .map_err(|_| error::HoconError::ParseError)?
-                    .1?,
-            );
-        };
-
-        Ok(internal)
-    }
-
-    pub(crate) fn read_file_to_string(path: PathBuf) -> Result<String, failure::Error> {
-        let mut file = File::open(path.as_os_str())?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        Ok(contents)
-    }
-
-    pub(crate) fn read_file(&self) -> Result<FileRead, failure::Error> {
-        let full_path = self
-            .file_meta
-            .clone()
-            .expect("missing file metadata")
-            .full_path;
-        match self.file_meta.as_ref().map(|fm| &fm.file_type) {
-            Some(FileType::All) => Ok(FileRead {
-                hocon: Self::read_file_to_string({
-                    let mut path = full_path.clone();
-                    path.set_extension("conf");
-                    path
-                })
-                .ok(),
-                json: Self::read_file_to_string({
-                    let mut path = full_path.clone();
-                    path.set_extension("json");
-                    path
-                })
-                .ok(),
-                properties: Self::read_file_to_string({
-                    let mut path = full_path.clone();
-                    path.set_extension("properties");
-                    path
-                })
-                .ok(),
-            }),
-            Some(ft) => Ok(FileRead::from_file_type(
-                ft,
-                Self::read_file_to_string(full_path)?,
-            )),
-            _ => unimplemented!(),
-        }
-    }
-
-    #[cfg(feature = "url-support")]
-    fn load_url(&self, url: &str) -> Result<internals::HoconInternal, failure::Error> {
-        if let Ok(parsed_url) = reqwest::Url::parse(url) {
-            if parsed_url.scheme() == "file" {
-                if let Ok(path) = parsed_url.to_file_path() {
-                    let include_config = self.included_from().with_file(path);
-                    let s = include_config.read_file()?;
-                    Ok(include_config.parse_str_to_internal(s).map_err(|_| {
-                        crate::error::HoconError::IncludeError {
-                            path: String::from(url),
-                        }
-                    })?)
-                } else {
-                    Err(crate::error::HoconError::IncludeError {
-                        path: String::from(url),
-                    })?
-                }
-            } else if self.external_url {
-                let body = reqwest::get(parsed_url)
-                    .and_then(|mut r| r.text())
-                    .map_err(|_| crate::error::HoconError::IncludeError {
-                        path: String::from(url),
-                    })?;
-
-                Ok(self.parse_str_to_internal(FileRead {
-                    hocon: Some(body),
-                    ..Default::default()
-                })?)
-            } else {
-                Err(crate::error::HoconError::IncludeError {
-                    path: String::from(url),
-                })?
-            }
-        } else {
-            Err(crate::error::HoconError::IncludeError {
-                path: String::from(url),
-            })?
-        }
-    }
-}
 
 /// Helper to load an HOCON file
 #[derive(Debug, Clone)]
@@ -347,7 +166,19 @@ impl HoconLoader {
         }
     }
 
-    pub(crate) fn load_from_str_of_conf_file(self, s: FileRead) -> Result<Self, HoconError> {
+    /// Set a new max include depth, by default 10
+    #[cfg(feature = "url-support")]
+    pub fn max_include_depth(&self, new_depth: u8) -> Self {
+        Self {
+            config: HoconLoaderConfig {
+                max_include_depth: new_depth,
+                ..self.config.clone()
+            },
+            ..self.clone()
+        }
+    }
+
+    pub(crate) fn load_from_str_of_conf_file(self, s: FileRead) -> Result<Self, Error> {
         Ok(Self {
             internal: self.internal.add(self.config.parse_str_to_internal(s)?),
             config: self.config,
@@ -356,23 +187,26 @@ impl HoconLoader {
 
     /// Deserialize the loaded documents to the target type
     #[cfg(feature = "serde-support")]
-    pub fn resolve<'de, T>(self) -> Result<T, HoconError>
+    pub fn resolve<'de, T>(self) -> Result<T, Error>
     where
         T: ::serde::Deserialize<'de>,
     {
-        Ok(crate::serde::from_hocon(self.hocon()?)
-            .map_err(|err| HoconError::DeserializationError(err.message))?)
+        Ok(
+            crate::serde::from_hocon(self.hocon()?).map_err(|err| Error::Deserialization {
+                message: err.message,
+            })?,
+        )
     }
 
     /// Load the documents as HOCON
-    pub fn hocon(self) -> Result<Hocon, HoconError> {
+    pub fn hocon(self) -> Result<Hocon, Error> {
         let config = &self.config;
         self.internal.merge(config)?.finalize(config)
     }
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
-    pub fn load_str(self, s: &str) -> Result<Self, HoconError> {
+    pub fn load_str(self, s: &str) -> Result<Self, Error> {
         self.load_from_str_of_conf_file(FileRead {
             hocon: Some(String::from(s)),
             ..Default::default()
@@ -380,12 +214,12 @@ impl HoconLoader {
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
-    pub fn load_file(&self, path: &str) -> Result<Self, HoconError> {
+    pub fn load_file(&self, path: &str) -> Result<Self, Error> {
         let file_path = Path::new(path).to_path_buf();
         let conf = self.config.with_file(file_path);
-        let contents = conf
-            .read_file()
-            .map_err(|err| HoconError::FileError(String::from(err.name().unwrap_or(path))))?;
+        let contents = conf.read_file().map_err(|err| Error::File {
+            path: String::from(err.name().unwrap_or(path)),
+        })?;
         Self {
             config: conf,
             ..self.clone()

@@ -214,7 +214,7 @@ named!(
 );
 
 named_args!(
-    arrays<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::HoconError>>,
+    arrays<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::Error>>,
     map!(
         do_parse!(
             maybe_substitution: opt!(path_substitution)
@@ -240,7 +240,7 @@ named_args!(
 );
 
 named_args!(
-    array<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::HoconError>>,
+    array<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::Error>>,
     map!(sp!(delimited!(
         do_parse!(char!('[') >> many0!(newline) >> ()),
         separated_list!(separators, call!(wrapper, config)),
@@ -250,7 +250,7 @@ named_args!(
 );
 
 named_args!(
-    key_value<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
+    key_value<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::Error>>,
     do_parse!(
         ws!(possible_comment)
             >> pair: sp!(alt!(
@@ -318,7 +318,7 @@ named!(
 );
 
 named_args!(
-    separated_hashlist<'a>(config: &HoconLoaderConfig)<Result<Vec<Hash>, crate::HoconError>>,
+    separated_hashlist<'a>(config: &HoconLoaderConfig)<Result<Vec<Hash>, crate::Error>>,
     map!(
         separated_list!(separators, call!(key_value, config)),
         crate::helper::extract_result
@@ -331,7 +331,7 @@ named_args!(
 );
 
 named_args!(
-    hashes<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
+    hashes<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::Error>>,
     map!(
         do_parse!(
             maybe_substitution: opt!(path_substitution)
@@ -357,7 +357,7 @@ named_args!(
 );
 
 named_args!(
-    hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
+    hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::Error>>,
     sp!(map!(
         delimited!(char!('{'), call!(separated_hashlist, config), call!(closing, '}')),
         |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(|h| h.into_iter()).collect())
@@ -365,7 +365,7 @@ named_args!(
 );
 
 named_args!(
-    root_hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
+    root_hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::Error>>,
     sp!(map!(
         do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, config) >> (list)),
         |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(|h| h.into_iter()).collect())
@@ -427,7 +427,7 @@ named!(
 );
 
 named_args!(
-    root_include<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::HoconError>>,
+    root_include<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::Error>>,
     map!(
         do_parse!(file_name: ws!(include) >> doc: call!(root, config) >> ((file_name, doc))),
         |(included, doc)| doc?.add_include(included, config)
@@ -435,7 +435,7 @@ named_args!(
 );
 
 named_args!(
-    wrapper<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::HoconError>>,
+    wrapper<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::Error>>,
     do_parse!(
         possible_comment
             >> wrapped:
@@ -450,7 +450,7 @@ named_args!(
 );
 
 named_args!(
-    pub(crate) root<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::HoconError>>,
+    pub(crate) root<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::Error>>,
     do_parse!(
         possible_comment
             >> wrapped:
