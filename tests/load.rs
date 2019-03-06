@@ -13,10 +13,11 @@ fn file_load(file_name: &str) {
         .load_file(file_name)
         .map(|doc| doc.hocon());
 
-    let mut file = File::open(file_name).unwrap();
+    let mut file = File::open(file_name).expect("during test");
     let mut original_content = String::new();
-    file.read_to_string(&mut original_content).unwrap();
+    file.read_to_string(&mut original_content)
+        .expect("during test");
     println!("original file: {}\n{}", file_name, original_content);
 
-    assert!(doc.is_ok());
+    assert!(dbg!(doc).is_ok());
 }

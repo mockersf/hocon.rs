@@ -18,19 +18,19 @@ pub enum Hocon {
     Hash(HashMap<String, Hocon>),
     /// A null value
     Null,
-    /// A `BadValue`, marking an error in parsing or an missing value
-    BadValue,
+    /// A `BadValue`, marking an error in parsing or a missing value
+    BadValue(crate::HoconError),
 }
 
-static BAD_VALUE: Hocon = Hocon::BadValue;
+static NOT_FOUND: Hocon = Hocon::BadValue(crate::HoconError::KeyNotFoundError);
 
 impl<'a> Index<&'a str> for Hocon {
     type Output = Hocon;
 
     fn index(&self, idx: &'a str) -> &Self::Output {
         match self {
-            Hocon::Hash(hash) => hash.get(idx).unwrap_or(&BAD_VALUE),
-            _ => &BAD_VALUE,
+            Hocon::Hash(hash) => hash.get(idx).unwrap_or(&NOT_FOUND),
+            _ => &NOT_FOUND,
         }
     }
 }
@@ -39,7 +39,7 @@ impl Index<usize> for Hocon {
 
     fn index(&self, idx: usize) -> &Self::Output {
         match self {
-            Hocon::Array(vec) => vec.get(idx).unwrap_or(&BAD_VALUE),
+            Hocon::Array(vec) => vec.get(idx).unwrap_or(&NOT_FOUND),
             Hocon::Hash(hash) => {
                 let mut keys_as_usize = hash
                     .keys()
@@ -49,9 +49,9 @@ impl Index<usize> for Hocon {
                 keys_as_usize
                     .get(idx)
                     .and_then(|(k, _)| hash.get(*k))
-                    .unwrap_or(&BAD_VALUE)
+                    .unwrap_or(&NOT_FOUND)
             }
-            _ => &BAD_VALUE,
+            _ => &NOT_FOUND,
         }
     }
 }
@@ -323,8 +323,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("test")));
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -335,8 +335,8 @@ mod tests {
         assert_eq!(val.as_f64(), Some(5.6));
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("5.6")));
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -347,8 +347,8 @@ mod tests {
         assert_eq!(val.as_f64(), Some(5.0));
         assert_eq!(val.as_i64(), Some(5));
         assert_eq!(val.as_string(), Some(String::from("5")));
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -359,8 +359,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("false")));
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -371,8 +371,8 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), Some(String::from("true")));
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -383,20 +383,20 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), None);
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
     fn access_on_bad_value() {
-        let val = Hocon::BadValue;
+        let val = Hocon::BadValue(crate::HoconError::DisabledExternalUrlError);
 
         assert_eq!(val.as_bool(), None);
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), None);
-        assert_eq!(val[0], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -409,8 +409,8 @@ mod tests {
         assert_eq!(val.as_string(), None);
         assert_eq!(val[0], Hocon::Integer(5));
         assert_eq!(val[1], Hocon::Integer(6));
-        assert_eq!(val[2], Hocon::BadValue);
-        assert_eq!(val["a"], Hocon::BadValue);
+        assert_eq!(val[2], NOT_FOUND);
+        assert_eq!(val["a"], NOT_FOUND);
     }
 
     #[test]
@@ -424,10 +424,10 @@ mod tests {
         assert_eq!(val.as_f64(), None);
         assert_eq!(val.as_i64(), None);
         assert_eq!(val.as_string(), None);
-        assert_eq!(val[0], Hocon::BadValue);
+        assert_eq!(val[0], NOT_FOUND);
         assert_eq!(val["a"], Hocon::Integer(5));
         assert_eq!(val["b"], Hocon::Integer(6));
-        assert_eq!(val["c"], Hocon::BadValue);
+        assert_eq!(val["c"], NOT_FOUND);
     }
 
     #[test]
@@ -459,7 +459,7 @@ mod tests {
         assert_eq!(val.as_string(), None);
         assert_eq!(val[0], Hocon::Integer(5));
         assert_eq!(val[1], Hocon::Integer(7));
-        assert_eq!(val[2], Hocon::BadValue);
+        assert_eq!(val[2], NOT_FOUND);
         assert_eq!(val["0"], Hocon::Integer(5));
         assert_eq!(val["a"], Hocon::Integer(6));
         assert_eq!(val["2"], Hocon::Integer(7));

@@ -22,7 +22,7 @@
 //!
 //! # fn main() -> Result<(), failure::Error> {
 //! let s = r#"{"a":5}"#;
-//! let doc = HoconLoader::new().load_str(s)?.hocon();
+//! let doc = HoconLoader::new().load_str(s)?.hocon()?;
 //! let a = doc["a"].as_i64();
 //! # Ok(())
 //! # }
@@ -63,6 +63,7 @@ mod value;
 pub use value::Hocon;
 mod error;
 pub use error::HoconError;
+pub(crate) mod helper;
 
 #[cfg(feature = "serde-support")]
 mod serde;
@@ -110,7 +111,11 @@ pub(crate) struct ConfFileMeta {
 }
 impl ConfFileMeta {
     fn from_path(path: PathBuf) -> Self {
-        let file = path.file_name().unwrap().to_str().unwrap();
+        let file = path
+            .file_name()
+            .expect("got a path without a filename")
+            .to_str()
+            .expect("got invalid UTF-8 path");
         let mut parent_path = path.clone();
         parent_path.pop();
 
@@ -135,6 +140,7 @@ struct HoconLoaderConfig {
     system: bool,
     #[cfg(feature = "url-support")]
     external_url: bool,
+    strict: bool,
 }
 
 impl Default for HoconLoaderConfig {
@@ -145,6 +151,7 @@ impl Default for HoconLoaderConfig {
             system: true,
             #[cfg(feature = "url-support")]
             external_url: true,
+            strict: false,
         }
     }
 }
@@ -173,7 +180,7 @@ impl HoconLoaderConfig {
     pub(crate) fn parse_str_to_internal(
         &self,
         s: FileRead,
-    ) -> Result<internals::HoconInternal, failure::Error> {
+    ) -> Result<internals::HoconInternal, HoconError> {
         let mut internal = internals::HoconInternal::empty();
         if let Some(properties) = s.properties {
             internal = internal.add(
@@ -186,14 +193,14 @@ impl HoconLoaderConfig {
             internal = internal.add(
                 parser::root(format!("{}\n\0", json).as_bytes(), self)
                     .map_err(|_| error::HoconError::ParseError)?
-                    .1,
+                    .1?,
             );
         };
         if let Some(hocon) = s.hocon {
             internal = internal.add(
                 parser::root(format!("{}\n\0", hocon).as_bytes(), self)
                     .map_err(|_| error::HoconError::ParseError)?
-                    .1,
+                    .1?,
             );
         };
 
@@ -201,16 +208,18 @@ impl HoconLoaderConfig {
     }
 
     pub(crate) fn read_file_to_string(path: PathBuf) -> Result<String, failure::Error> {
-        let mut file =
-            File::open(path.as_os_str()).map_err(|_| error::HoconError::ReadFileError)?;
+        let mut file = File::open(path.as_os_str())?;
         let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .map_err(|_| error::HoconError::ReadFileError)?;
+        file.read_to_string(&mut contents)?;
         Ok(contents)
     }
 
     pub(crate) fn read_file(&self) -> Result<FileRead, failure::Error> {
-        let full_path = self.file_meta.clone().unwrap().full_path;
+        let full_path = self
+            .file_meta
+            .clone()
+            .expect("missing file metadata")
+            .full_path;
         match self.file_meta.as_ref().map(|fm| &fm.file_type) {
             Some(FileType::All) => Ok(FileRead {
                 hocon: Self::read_file_to_string({
@@ -326,7 +335,19 @@ impl HoconLoader {
         }
     }
 
-    pub(crate) fn load_from_str_of_conf_file(self, s: FileRead) -> Result<Self, failure::Error> {
+    /// Returns an error when encountering a `Hocon::BadValue`
+    #[cfg(feature = "url-support")]
+    pub fn strict(&self) -> Self {
+        Self {
+            config: HoconLoaderConfig {
+                strict: true,
+                ..self.config.clone()
+            },
+            ..self.clone()
+        }
+    }
+
+    pub(crate) fn load_from_str_of_conf_file(self, s: FileRead) -> Result<Self, HoconError> {
         Ok(Self {
             internal: self.internal.add(self.config.parse_str_to_internal(s)?),
             config: self.config,
@@ -335,22 +356,23 @@ impl HoconLoader {
 
     /// Deserialize the loaded documents to the target type
     #[cfg(feature = "serde-support")]
-    pub fn resolve<'de, T>(self) -> Result<T, failure::Error>
+    pub fn resolve<'de, T>(self) -> Result<T, HoconError>
     where
         T: ::serde::Deserialize<'de>,
     {
-        Ok(crate::serde::from_hocon(self.hocon())?)
+        Ok(crate::serde::from_hocon(self.hocon()?)
+            .map_err(|err| HoconError::DeserializationError(err.message))?)
     }
 
     /// Load the documents as HOCON
-    pub fn hocon(self) -> Hocon {
+    pub fn hocon(self) -> Result<Hocon, HoconError> {
         let config = &self.config;
-        self.internal.merge().finalize(config)
+        self.internal.merge(config)?.finalize(config)
     }
 
     /// Load a string containing an `Hocon` document. Includes are not supported when
     /// loading from a string
-    pub fn load_str(self, s: &str) -> Result<Self, failure::Error> {
+    pub fn load_str(self, s: &str) -> Result<Self, HoconError> {
         self.load_from_str_of_conf_file(FileRead {
             hocon: Some(String::from(s)),
             ..Default::default()
@@ -358,10 +380,12 @@ impl HoconLoader {
     }
 
     /// Load the HOCON configuration file containing an `Hocon` document
-    pub fn load_file(&self, path: &str) -> Result<Self, failure::Error> {
+    pub fn load_file(&self, path: &str) -> Result<Self, HoconError> {
         let file_path = Path::new(path).to_path_buf();
         let conf = self.config.with_file(file_path);
-        let contents = conf.read_file()?;
+        let contents = conf
+            .read_file()
+            .map_err(|err| HoconError::FileError(String::from(err.name().unwrap_or(path))))?;
         Self {
             config: conf,
             ..self.clone()
@@ -389,7 +413,7 @@ mod tests {
         .load_str(s));
         assert!(loader.is_ok());
 
-        let doc = loader.unwrap().hocon();
+        let doc = loader.expect("during test").hocon().expect("during test");
         assert_eq!(doc["a"]["b"].as_string(), Some(String::from("c")));
     }
 
@@ -408,7 +432,7 @@ mod tests {
         .load_str(s));
         assert!(loader.is_ok());
 
-        let doc: Hocon = loader.unwrap().hocon();
+        let doc: Hocon = loader.expect("during test").hocon().expect("during test");
         assert_eq!(doc["a"]["b"].as_string(), Some(String::from("c")));
     }
 
@@ -439,10 +463,11 @@ mod tests {
             {int:1, float:2,   option_int:null},
 ]}"#;
 
-        let res: Result<WithSubStruct, _> =
-            dbg!(HoconLoader::new().load_str(doc)).unwrap().resolve();
+        let res: Result<WithSubStruct, _> = dbg!(HoconLoader::new().load_str(doc))
+            .expect("during test")
+            .resolve();
         assert!(res.is_ok());
-        let res = res.unwrap();
+        let res = res.expect("during test");
         assert_eq!(res.int, 56);
         assert_eq!(res.float, 543.12);
         assert_eq!(res.boolean, false);
@@ -467,10 +492,11 @@ mod tests {
             vec_sub.8 = {int:1, float:2,   option_int:null},
     }"#;
 
-        let res: Result<WithSubStruct, _> =
-            dbg!(HoconLoader::new().load_str(doc)).unwrap().resolve();
+        let res: Result<WithSubStruct, _> = dbg!(HoconLoader::new().load_str(doc))
+            .expect("during test")
+            .resolve();
         assert!(res.is_ok());
-        let res = res.unwrap();
+        let res = res.expect("during test");
         assert_eq!(res.int, 56);
         assert_eq!(res.float, 543.12);
         assert_eq!(res.boolean, false);

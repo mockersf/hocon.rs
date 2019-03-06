@@ -214,7 +214,7 @@ named!(
 );
 
 named_args!(
-    arrays<'a>(config: &HoconLoaderConfig)<Vec<HoconInternal>>,
+    arrays<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::HoconError>>,
     map!(
         do_parse!(
             maybe_substitution: opt!(path_substitution)
@@ -222,52 +222,53 @@ named_args!(
                 >> remaining_arrays: many0!(call!(array, config))
                 >> (maybe_substitution, first_array, remaining_arrays)
         ),
-        |(maybe_substitution, mut first_array, remaining_arrays)| match (maybe_substitution, remaining_arrays.is_empty()) {
+        |(maybe_substitution, first_array, remaining_arrays)| match (maybe_substitution, remaining_arrays.is_empty()) {
             (None, true) => first_array,
             (None, false) => {
-                let mut values = first_array;
-                remaining_arrays.into_iter().for_each(|mut array| values.append(&mut array));
-                values
+                let mut values = first_array?;
+                crate::helper::extract_result(remaining_arrays)?.into_iter().for_each(|mut array| values.append(&mut array));
+                Ok(values)
             }
             (Some(subst), _) => {
                 let mut values = vec![HoconInternal::from_value(HoconValue::PathSubstitutionInParent(Box::new(subst)))];
-                values.append(&mut first_array);
-                remaining_arrays.into_iter().for_each(|mut array| values.append(&mut array));
-                values
+                values.append(&mut first_array?);
+                crate::helper::extract_result(remaining_arrays)?.into_iter().for_each(|mut array| values.append(&mut array));
+                Ok(values)
             }
         }
     )
 );
 
 named_args!(
-    array<'a>(config: &HoconLoaderConfig)<Vec<HoconInternal>>,
-    sp!(delimited!(
+    array<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::HoconError>>,
+    map!(sp!(delimited!(
         do_parse!(char!('[') >> many0!(newline) >> ()),
         separated_list!(separators, call!(wrapper, config)),
         call!(closing, ']')
-    ))
+    )),
+    crate::helper::extract_result)
 );
 
 named_args!(
-    key_value<'a>(config: &HoconLoaderConfig)<Hash>,
+    key_value<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
     do_parse!(
         ws!(possible_comment)
             >> pair: sp!(alt!(
-                call!(include) => { |path| HoconInternal::from_include(path, config).internal } |
+                call!(include) => { |path| Ok(HoconInternal::from_include(path, config)?.internal) } |
                 separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
-                    => { |(s, h): (&str, HoconInternal)|
-                        HoconInternal::from_object(h.internal)
-                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal
+                    => { |(s, h): (&str, Result<HoconInternal, _>)|
+                        Ok(HoconInternal::from_object(h?.internal)
+                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
                     } |
                 pair!(ws!(string), call!(hashes, config))
-                    => { |(s, h): (&str, Hash)|
-                        HoconInternal::from_object(h)
-                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal
+                    => { |(s, h): (&str, Result<Hash, _>)|
+                        Ok(HoconInternal::from_object(h?)
+                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
                     } |
                 // to concat to an array
                 separated_pair!(ws!(string), ws!(tag!("+=")), call!(wrapper, config))
-                    => { |(s, h): (&str, HoconInternal)|
-                        HoconInternal::from_object(h.internal)
+                    => { |(s, h): (&str, Result<HoconInternal, _>)|
+                        Ok(HoconInternal::from_object(h?.internal)
                             .transform(|k, v| (
                                 k.clone(),
                                 HoconValue::ToConcatToArray {
@@ -276,22 +277,22 @@ named_args!(
                                     original_path: k
                                 }
                             ))
-                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal
+                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
                     } |
                 separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
-                    => { |(s, h): (&str, HoconInternal)|
-                        HoconInternal::from_object(h.internal)
-                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
+                    => { |(s, h): (&str, Result<HoconInternal, _>)|
+                        Ok(HoconInternal::from_object(h?.internal)
+                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal)
                     } |
                 pair!(ws!(unquoted_string), call!(hashes, config))
-                    => { |(s, h): (&str, Hash)|
-                        HoconInternal::from_object(h)
-                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
+                    => { |(s, h): (&str, Result<Hash, _>)|
+                        Ok(HoconInternal::from_object(h?)
+                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal)
                     } |
                 // to concat to an array
                 separated_pair!(ws!(unquoted_string), ws!(tag!("+=")), call!(wrapper, config))
-                    => { |(s, h): (&str, HoconInternal)|
-                        HoconInternal::from_object(h.internal)
+                    => { |(s, h): (&str, Result<HoconInternal, _>)|
+                        Ok(HoconInternal::from_object(h?.internal)
                             .transform(|k, v| (
                                 k.clone(),
                                 HoconValue::ToConcatToArray {
@@ -300,7 +301,7 @@ named_args!(
                                     original_path: k
                                 }
                             ))
-                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal
+                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal)
                     }
             ))
             >> (pair)
@@ -317,8 +318,11 @@ named!(
 );
 
 named_args!(
-    separated_hashlist<'a>(config: &HoconLoaderConfig)<Vec<Hash>>,
-    separated_list!(separators, call!(key_value, config))
+    separated_hashlist<'a>(config: &HoconLoaderConfig)<Result<Vec<Hash>, crate::HoconError>>,
+    map!(
+        separated_list!(separators, call!(key_value, config)),
+        crate::helper::extract_result
+    )
 );
 
 named_args!(
@@ -327,7 +331,7 @@ named_args!(
 );
 
 named_args!(
-    hashes<'a>(config: &HoconLoaderConfig)<Hash>,
+    hashes<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
     map!(
         do_parse!(
             maybe_substitution: opt!(path_substitution)
@@ -335,36 +339,36 @@ named_args!(
                 >> remaining_hashes: many0!(call!(hash, config))
                 >> (maybe_substitution, first_hash, remaining_hashes)
         ),
-        |(maybe_substitution, mut first_hash, remaining_hashes)| match (maybe_substitution, remaining_hashes.is_empty()) {
+        |(maybe_substitution, first_hash, remaining_hashes)| match (maybe_substitution, remaining_hashes.is_empty()) {
             (None, true) => first_hash,
             (None, false) => {
-                let mut values = first_hash;
-                remaining_hashes.into_iter().for_each(|mut hash| values.append(&mut hash));
-                values
+                let mut values = first_hash?;
+                crate::helper::extract_result(remaining_hashes)?.into_iter().for_each(|mut hash| values.append(&mut hash));
+                Ok(values)
             }
             (Some(subst), _) => {
                 let mut values = vec![(vec![], HoconValue::PathSubstitution(Box::new(subst)))];
-                values.append(&mut first_hash);
-                remaining_hashes.into_iter().for_each(|mut hash| values.append(&mut hash));
-                values
+                values.append(&mut first_hash?);
+                crate::helper::extract_result(remaining_hashes)?.into_iter().for_each(|mut hash| values.append(&mut hash));
+                Ok(values)
             }
         }
     )
 );
 
 named_args!(
-    hash<'a>(config: &HoconLoaderConfig)<Hash>,
+    hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
     sp!(map!(
         delimited!(char!('{'), call!(separated_hashlist, config), call!(closing, '}')),
-        |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
+        |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(|h| h.into_iter()).collect())
     ))
 );
 
 named_args!(
-    root_hash<'a>(config: &HoconLoaderConfig)<Hash>,
+    root_hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::HoconError>>,
     sp!(map!(
         do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, config) >> (list)),
-        |tuple_vec| tuple_vec.into_iter().flat_map(|h| h.into_iter()).collect()
+        |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(|h| h.into_iter()).collect())
     ))
 );
 
@@ -423,38 +427,38 @@ named!(
 );
 
 named_args!(
-    root_include<'a>(config: &HoconLoaderConfig)<HoconInternal>,
+    root_include<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::HoconError>>,
     map!(
         do_parse!(file_name: ws!(include) >> doc: call!(root, config) >> ((file_name, doc))),
-        |(included, mut doc)| doc.add_include(included, config)
+        |(included, doc)| doc?.add_include(included, config)
     )
 );
 
 named_args!(
-    wrapper<'a>(config: &HoconLoaderConfig)<HoconInternal>,
+    wrapper<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::HoconError>>,
     do_parse!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(hashes, config) => { |h| HoconInternal::from_object(h)          } |
-                    call!(arrays, config) => { |a| HoconInternal::from_array(a)           } |
+                    call!(hashes, config) => { |h| Ok(HoconInternal::from_object(h?))      } |
+                    call!(arrays, config) => { |a| Ok(HoconInternal::from_array(a?))      } |
                     include               => { |f| HoconInternal::from_include(f, config) } |
-                    value                 => { |v| HoconInternal::from_value(v)           }
+                    value                 => { |v| Ok(HoconInternal::from_value(v))       }
                 )
             >> (wrapped)
     )
 );
 
 named_args!(
-    pub(crate) root<'a>(config: &HoconLoaderConfig)<HoconInternal>,
+    pub(crate) root<'a>(config: &HoconLoaderConfig)<Result<HoconInternal, crate::HoconError>>,
     do_parse!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(root_include, config) => { |d| d                             } |
-                    call!(root_hash, config)    => { |h| HoconInternal::from_object(h) } |
-                    call!(hash, config)         => { |h| HoconInternal::from_object(h) } |
-                    call!(array, config)        => { |a| HoconInternal::from_array(a)  }
+                    call!(root_include, config) => { |d| d                                 } |
+                    call!(root_hash, config)    => { |h| Ok(HoconInternal::from_object(h?)) } |
+                    call!(hash, config)         => { |h| Ok(HoconInternal::from_object(h?)) } |
+                    call!(array, config)        => { |a| Ok(HoconInternal::from_array(a?)) }
                 )
             >> (wrapped)
     )

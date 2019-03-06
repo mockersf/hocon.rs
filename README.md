@@ -8,14 +8,14 @@ The API docs for the master branch are published [here](https://mockersf.github.
 
 ```rust
 let s = r#"{"a":5}"#;
-let doc: Hocon = HoconLoader::from_str(s).unwrap();
+let doc: Hocon = HoconLoader::from_str(s)?;
 
 assert_eq!(doc["a"].as_i64().unwrap(), 5);
 ```
 
 ```rust
 let s = r#"{"b":5, "b":10}"#;
-let doc: Hocon = HoconLoader::from_str(s).unwrap();
+let doc: Hocon = HoconLoader::from_str(s)?;
 
 assert_eq!(doc["b"].as_i64().unwrap(), 10);
 ```
@@ -34,7 +34,7 @@ struct Configuration {
 
 let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
 
-let conf: Configuration = hocon::serde::from_str(s).unwrap();
+let conf: Configuration = hocon::serde::from_str(s)?;
 ```
 
 ## Status

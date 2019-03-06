@@ -2,6 +2,6 @@
 created: "2019-03-03T15:09:59.410189Z"
 creator: insta@0.6.2
 source: tests/snapshot.rs
-expression: stable_readable_display(&doc.unwrap())
+expression: stable_readable_display(&doc.expect("during test"))
 ---
 "{a: 12, b: 6.7, c: [1, 2, 3], d: true, e: \"val\", f: {g: false, h: 8}}"

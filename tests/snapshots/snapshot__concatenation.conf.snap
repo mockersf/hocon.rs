@@ -2,6 +2,6 @@
 created: "2019-02-18T23:28:06.977449Z"
 creator: insta@0.6.2
 source: tests/snapshot.rs
-expression: stable_readable_display(&doc.unwrap())
+expression: stable_readable_display(&doc.expect("during test"))
 ---
 "{user: \"world\", with_null: \"null bar 42 baz null true 3.14 hi null\", with_substitution: \"hello world!\"}"

@@ -7,8 +7,9 @@ fn parse(file_name: &str) -> () {
     hocon::HoconLoader::new()
         .no_system()
         .load_file(file_name)
-        .unwrap()
-        .hocon();
+        .expect("during test")
+        .hocon()
+        .expect("during test");
 }
 
 fn criterion_benchmark(c: &mut Criterion) {

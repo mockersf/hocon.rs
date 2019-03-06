@@ -100,12 +100,12 @@ impl Read for HoconRead {
     fn get_attribute_value(&self, index: &Index) -> Option<&Hocon> {
         match *index {
             Index::String(ref key) => match &self.hocon[key.as_ref()] {
-                Hocon::BadValue => None,
+                Hocon::BadValue(_) => None,
                 v => Some(v),
             },
             Index::Root => Some(&self.hocon),
             Index::Number(key) => match &self.hocon[key] {
-                Hocon::BadValue => None,
+                Hocon::BadValue(_) => None,
                 v => Some(v),
             },
             _ => None,
@@ -598,7 +598,7 @@ mod tests {
 
         let res: super::Result<WithArray> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().a, vec![5, 7]);
+        assert_eq!(res.expect("during test").a, vec![5, 7]);
     }
 
 }

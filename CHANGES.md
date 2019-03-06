@@ -2,7 +2,8 @@
 
 ## 0.3.0
 
-* basic error management
+* error management
+* introducing strict mode where errors will be returned instead of included in the document as `Hocon::BadValue`
 
 ## 0.2.0
 

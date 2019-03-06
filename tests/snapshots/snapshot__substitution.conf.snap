@@ -2,6 +2,6 @@
 created: "2019-02-12T01:34:53.829087Z"
 creator: insta@0.6.2
 source: tests/snapshot.rs
-expression: stable_readable_display(&doc.unwrap())
+expression: stable_readable_display(&doc.expect("during test"))
 ---
 "{a: \"value from substitution\", c: {d: 8, e: \"value from substitution\"}, fromparent: BadValue}"
