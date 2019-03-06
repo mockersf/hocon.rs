@@ -515,14 +515,17 @@ impl Node {
 
                 match first {
                     None => Ok(self.clone()),
-                    Some(first) => Ok(children
-                        .iter()
-                        .find(|child| child.key == first)
-                        .and_then(|child| child.find_key(config, remaining).ok())
-                        .unwrap_or(Node::Leaf(bad_value_or_err!(
-                            config,
-                            crate::HoconError::KeyNotFoundError
-                        )))),
+                    Some(first) => Ok(
+                        match children
+                            .iter()
+                            .find(|child| child.key == first)
+                            .ok_or(crate::HoconError::KeyNotFoundError)
+                            .and_then(|child| child.find_key(config, remaining))
+                        {
+                            Ok(n) => n,
+                            Err(err) => Node::Leaf(bad_value_or_err!(config, err)),
+                        },
+                    ),
                 }
             }
             _ => Ok(Node::Leaf(bad_value_or_err!(
