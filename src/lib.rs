@@ -182,6 +182,11 @@ mod serde;
 /// ```rust
 /// # use hocon::HoconLoader;
 /// # fn main() -> Result<(), failure::Error> {
+/// # #[cfg(not(feature = "url-support"))]
+/// # let mut loader = HoconLoader::new()         // Creating new loader with default configuration
+/// #     .no_system();                           // Disable substituting from system environment
+///
+/// # #[cfg(feature = "url-support")]
 /// let mut loader = HoconLoader::new()         // Creating new loader with default configuration
 ///     .no_system()                            // Disable substituting from system environment
 ///     .no_url_include();                      // Disable including files from URLs
