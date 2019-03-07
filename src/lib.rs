@@ -16,10 +16,10 @@
 //! Parse HOCON configuration files in Rust following the
 //! [HOCON Specifications](https://github.com/lightbend/config/blob/master/HOCON.md).
 //!
-//! This implementation goal is to be as permissive as possible, returning a
-//! [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue) when a correct value cannot be computed.
-//! [`strict`](struct.HoconLoader.html#method.strict) mode can be enabled to return an
-//! [`Error`](enum.Error.html) instead.
+//! This implementation goal is to be as permissive as possible, returning a valid document
+//! with all errors wrapped in [`Hocon::BadValue`](enum.Hocon.html#variant.BadValue) when a
+//! correct value cannot be computed. [`strict`](struct.HoconLoader.html#method.strict) mode
+//! can be enabled to return the first [`Error`](enum.Error.html) encountered instead.
 //!
 //! # Examples
 //!

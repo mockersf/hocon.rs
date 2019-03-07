@@ -204,9 +204,8 @@ macro_rules! units {
 }
 
 impl Hocon {
-    /// Try to return a value as a size in bytes
-    ///
-    /// [Size in bytes Format](https://github.com/lightbend/config/blob/master/HOCON.md#size-in-bytes-format)
+    /// Try to return a value as a size in bytes according to
+    /// [size in bytes format](https://github.com/lightbend/config/blob/master/HOCON.md#size-in-bytes-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
@@ -216,9 +215,8 @@ impl Hocon {
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), failure::Error> {
-    /// # let example = r#"{ size = 1.5KiB }"#;
     /// assert_eq!(
-    ///     HoconLoader::new().load_str(example)?.hocon()?["size"].as_bytes(),
+    ///     HoconLoader::new().load_str(r#"{ size = 1.5KiB }"#)?.hocon()?["size"].as_bytes(),
     ///     Some(1536.0)
     /// );
     /// # Ok(())
@@ -252,12 +250,25 @@ impl Hocon {
         }
     }
 
-    /// Try to return a value as a duration in milliseconds
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in milliseconds according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_milliseconds(),
+    ///     Some(5400000.0)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_milliseconds(&self) -> Option<f64> {
         match *self {
             Hocon::Integer(ref i) => Some(*i as f64),
@@ -279,108 +290,238 @@ impl Hocon {
         }
     }
 
-    /// Try to return a value as a duration in nanoseconds
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in nanoseconds according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_nanoseconds(),
+    ///     Some(5400000000000.0)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_nanoseconds(&self) -> Option<f64> {
         self.as_milliseconds().map(|v| v * 10.0f64.powf(6.0))
     }
 
-    /// Try to return a value as a duration in microseconds
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in microseconds according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_microseconds(),
+    ///     Some(5400000000.0)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_microseconds(&self) -> Option<f64> {
         self.as_milliseconds().map(|v| v * 10.0f64.powf(3.0))
     }
 
-    /// Try to return a value as a duration in seconds
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in seconds according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_seconds(),
+    ///     Some(5400.0)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_seconds(&self) -> Option<f64> {
         self.as_milliseconds().map(|v| v * 10.0f64.powf(-3.0))
     }
 
-    /// Try to return a value as a duration in minutes
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in minutes according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_minutes(),
+    ///     Some(90.0)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_minutes(&self) -> Option<f64> {
         self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0)
     }
 
-    /// Try to return a value as a duration in hours
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in hours according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_hours(),
+    ///     Some(1.5)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_hours(&self) -> Option<f64> {
         self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0)
     }
 
-    /// Try to return a value as a duration in days
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in days according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
+    ///         .hocon()?["duration"].as_days(),
+    ///     Some(0.0625)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_days(&self) -> Option<f64> {
         self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0)
     }
 
-    /// Try to return a value as a duration in weeks
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in weeks according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
+    ///         .hocon()?["duration"].as_weeks(),
+    ///     Some(0.21428571428571427)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_weeks(&self) -> Option<f64> {
         self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 7.0)
     }
 
-    /// Try to return a value as a duration in months
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in months according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
+    ///         .hocon()?["duration"].as_months(),
+    ///     Some(0.05)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_months(&self) -> Option<f64> {
         self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 30.0)
     }
 
-    /// Try to return a value as a duration in years
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration in years according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
+    ///         .hocon()?["duration"].as_years(),
+    ///     Some(0.00410958904109589)
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_years(&self) -> Option<f64> {
         self.as_milliseconds()
             .map(|v| v * 10.0f64.powf(-3.0) / 60.0 / 60.0 / 24.0 / 365.0)
     }
 
-    /// Try to return a value as a duration
-    ///
-    /// [Duration Format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format)
+    /// Try to return a value as a duration according to
+    /// [duration format](https://github.com/lightbend/config/blob/master/HOCON.md#duration-format).
     ///
     /// Bare numbers are taken to be in bytes already, while strings are parsed as a number
     /// plus an optional unit string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), failure::Error> {
+    /// assert_eq!(
+    ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hours  }"#)?
+    ///         .hocon()?["duration"].as_duration(),
+    ///     Some(std::time::Duration::from_secs(5400))
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn as_duration(&self) -> Option<std::time::Duration> {
         self.as_nanoseconds()
             .map(|v| std::time::Duration::from_nanos(v as u64))

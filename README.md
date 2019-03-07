@@ -5,9 +5,9 @@ The API docs for the master branch are published [here](https://mockersf.github.
 Parse HOCON configuration files in Rust following the
 [HOCON Specifications](https://github.com/lightbend/config/blob/master/HOCON.md).
 
-This implementation goal is to be as permissive as possible, returning a `Hocon::BadValue`
-when a correct value cannot be computed. `strict` mode can be enabled to return an
-`Error` instead.
+This implementation goal is to be as permissive as possible, returning a valid document
+with all errors wrapped in `Hocon::BadValue`. `strict` mode can be enabled to return the
+first `Error` encountered instead.
 
 ## Examples
 
