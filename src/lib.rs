@@ -593,4 +593,43 @@ mod tests {
         assert_eq!(res.vec_sub[2].option_int, None);
     }
 
+    #[cfg(feature = "serde-support")]
+    #[test]
+    fn error_deserializing_struct() {
+        let doc = r#"{
+            int:"not an int", float:543.12, boolean:false, string: test,
+            vec_sub:[]
+        }"#;
+
+        let res: Result<WithSubStruct, _> = dbg!(HoconLoader::new().load_str(doc))
+            .expect("during test")
+            .resolve();
+        assert!(res.is_err());
+        assert_eq!(
+            res.unwrap_err(),
+            Error::Deserialization {
+                message: String::from("missing integer for field String(\"int\")")
+            }
+        );
+    }
+
+    #[cfg(feature = "url-support")]
+    #[test]
+    fn can_disable_url_include() {
+        let doc = dbg!(HoconLoader::new()
+            .no_url_include()
+            .load_file("tests/data/include_url.conf")
+            .unwrap()
+            .hocon())
+        .unwrap();
+        assert_eq!(doc["d"], Hocon::BadValue(Error::MissingKey));
+        assert_eq!(
+            doc["https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf"],
+            Hocon::BadValue(
+                Error::Include {
+                    path: String::from("https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf")
+                }
+            )
+        );
+    }
 }
