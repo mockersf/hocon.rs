@@ -6,6 +6,8 @@ use crate::{Hocon, HoconLoaderConfig};
 
 use super::value::HoconValue;
 
+use crate::internals::value;
+
 #[derive(Clone, Debug)]
 pub(crate) enum KeyType {
     Int,
@@ -111,7 +113,7 @@ impl Node {
                             .ok_or(crate::Error::KeyNotFound {
                                 key: path
                                     .into_iter()
-                                    .map(|v| v.string_value())
+                                    .map(value::HoconValue::string_value)
                                     .collect::<Vec<_>>()
                                     .join("."),
                             })
@@ -128,7 +130,7 @@ impl Node {
                 crate::Error::KeyNotFound {
                     key: path
                         .into_iter()
-                        .map(|v| v.string_value())
+                        .map(value::HoconValue::string_value)
                         .collect::<Vec<_>>()
                         .join(".")
                 }

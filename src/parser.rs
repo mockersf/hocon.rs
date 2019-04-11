@@ -360,7 +360,7 @@ named_args!(
     hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::Error>>,
     sp!(map!(
         delimited!(char!('{'), call!(separated_hashlist, config), call!(closing, '}')),
-        |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(|h| h.into_iter()).collect())
+        |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(std::iter::IntoIterator::into_iter).collect())
     ))
 );
 
@@ -368,7 +368,7 @@ named_args!(
     root_hash<'a>(config: &HoconLoaderConfig)<Result<Hash, crate::Error>>,
     sp!(map!(
         do_parse!(not!(char!('{')) >> list: call!(separated_hashlist, config) >> (list)),
-        |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(|h| h.into_iter()).collect())
+        |tuple_vec| Ok(tuple_vec?.into_iter().flat_map(std::iter::IntoIterator::into_iter).collect())
     ))
 );
 
