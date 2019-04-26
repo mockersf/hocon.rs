@@ -23,7 +23,7 @@ matrix:
     - stage: test
       name: beta
       env: CACHE_JOB=beta
-      rust: stable
+      rust: beta
       script:
         - cargo test
     - stage: test
@@ -45,7 +45,7 @@ matrix:
     - stage: "Advanced Tests"
       name: nightly
       env: CACHE_JOB=nightly
-      rust: stable
+      rust: nightly
       script:
         - cargo test
     - stage: "Advanced Tests"
