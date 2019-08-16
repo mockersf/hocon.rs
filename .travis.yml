@@ -79,8 +79,10 @@ matrix:
       name: bench
       env: CACHE_JOB=stable
       rust: stable
-      install:
-        - sudo apt-get install -y gnuplot
+      addons:
+        apt:
+          packages:
+            - gnuplot
       script:
         - |
           commitHash=$(git rev-parse HEAD)
