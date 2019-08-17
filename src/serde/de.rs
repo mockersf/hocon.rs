@@ -81,7 +81,6 @@ macro_rules! impl_deserialize_f {
 enum Index {
     String(String),
     Number(usize),
-    Root,
     None,
 }
 
@@ -103,7 +102,6 @@ impl Read for HoconRead {
                 Hocon::BadValue(_) => None,
                 v => Some(v),
             },
-            Index::Root => Some(&self.hocon),
             Index::Number(key) => match &self.hocon[key] {
                 Hocon::BadValue(_) => None,
                 v => Some(v),
