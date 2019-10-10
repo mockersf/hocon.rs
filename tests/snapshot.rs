@@ -3,7 +3,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 
-use insta::assert_debug_snapshot_matches;
+use insta::assert_debug_snapshot;
 use test_generator;
 
 use hocon::{self, Hocon};
@@ -55,7 +55,7 @@ fn snapshot(file_name: &str) {
         .expect("during test");
     println!("original file: {}\n{}", file_name, original_content);
 
-    assert_debug_snapshot_matches!(
+    assert_debug_snapshot!(
         file_name.split('/').last().expect("during test"),
         stable_readable_display(&doc)
     );

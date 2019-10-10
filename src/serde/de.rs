@@ -598,5 +598,4 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(res.expect("during test").a, vec![5, 7]);
     }
-
 }

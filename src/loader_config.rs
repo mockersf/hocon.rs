@@ -204,7 +204,8 @@ impl HoconLoaderConfig {
                 } else {
                     Err(crate::Error::Include {
                         path: String::from(url),
-                    })?
+                    }
+                    .into())
                 }
             } else if self.external_url {
                 let body = reqwest::get(parsed_url)
@@ -220,12 +221,14 @@ impl HoconLoaderConfig {
             } else {
                 Err(crate::Error::Include {
                     path: String::from(url),
-                })?
+                }
+                .into())
             }
         } else {
             Err(crate::Error::Include {
                 path: String::from(url),
-            })?
+            }
+            .into())
         }
     }
 }

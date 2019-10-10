@@ -3,7 +3,7 @@ pub(crate) mod macros {
     macro_rules! bad_value_or_err {
         ( $config:expr, $err:expr ) => {
             if $config.strict {
-                Err($err)?
+                return Err($err);
             } else {
                 HoconValue::BadValue($err)
             }
@@ -13,7 +13,7 @@ pub(crate) mod macros {
     macro_rules! public_bad_value_or_err {
         ( $config:expr, $err:expr ) => {
             if $config.strict {
-                Err($err)?
+                return Err($err);
             } else {
                 Hocon::BadValue($err)
             }

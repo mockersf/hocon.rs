@@ -845,5 +845,4 @@ mod tests {
             Some(std::time::Duration::from_secs(60 * 60 * 24 * 365))
         );
     }
-
 }

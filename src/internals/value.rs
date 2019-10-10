@@ -145,7 +145,7 @@ impl HoconValue {
                             Err(_) => Ok(public_bad_value_or_err!(config, err)),
                         }
                     }
-                    (true, _, Err(err)) | (true, _, Ok(Hocon::BadValue(err))) => Err(err)?,
+                    (true, _, Err(err)) | (true, _, Ok(Hocon::BadValue(err))) => Err(err),
                     (_, _, v) => v,
                 }
             }
