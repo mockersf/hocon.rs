@@ -467,11 +467,7 @@ impl HoconLoader {
     where
         T: ::serde::Deserialize<'de>,
     {
-        Ok(
-            crate::serde::from_hocon(self.hocon()?).map_err(|err| Error::Deserialization {
-                message: err.message,
-            })?,
-        )
+        self.hocon()?.resolve()
     }
 }
 

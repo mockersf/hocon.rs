@@ -528,6 +528,35 @@ impl Hocon {
     }
 }
 
+impl Hocon {
+    /// Deserialize the loaded documents to the target type
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::Deserialization`](enum.Error.html#variant.Deserialization) if there was a
+    /// serde error during deserialization (missing required field, type issue, ...)
+    ///
+    /// # Additional errors in strict mode
+    ///
+    /// * [`Error::Include`](enum.Error.html#variant.Include) if there was an issue with an
+    /// included file
+    /// * [`Error::KeyNotFound`](enum.Error.html#variant.KeyNotFound) if there is a substitution
+    /// with a key that is not present in the document
+    /// * [`Error::DisabledExternalUrl`](enum.Error.html#variant.DisabledExternalUrl) if crate
+    /// was built without feature `url-support` and an `include url("...")` was found
+    #[cfg(feature = "serde-support")]
+    pub fn resolve<'de, T>(self) -> Result<T, crate::Error>
+        where
+            T: ::serde::Deserialize<'de>,
+    {
+        Ok(
+            crate::serde::from_hocon(self).map_err(|err| crate::Error::Deserialization {
+                message: err.message,
+            })?,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
