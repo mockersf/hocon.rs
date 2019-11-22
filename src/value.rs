@@ -546,8 +546,8 @@ impl Hocon {
     /// was built without feature `url-support` and an `include url("...")` was found
     #[cfg(feature = "serde-support")]
     pub fn resolve<'de, T>(self) -> Result<T, crate::Error>
-        where
-            T: ::serde::Deserialize<'de>,
+    where
+        T: ::serde::Deserialize<'de>,
     {
         Ok(
             crate::serde::from_hocon(self).map_err(|err| crate::Error::Deserialization {
