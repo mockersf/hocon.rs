@@ -412,18 +412,23 @@ impl HoconLoader {
     /// * [`Error::TooManyIncludes`](enum.Error.html#variant.TooManyIncludes)
     /// if there are too many included files within included files. The limit can be
     /// changed with [`max_include_depth`](struct.HoconLoader.html#method.max_include_depth)
-    pub fn load_file(&self, path: &str) -> Result<Self, Error> {
-        let mut file_path = Path::new(path).to_path_buf();
+    pub fn load_file<P: AsRef<Path>>(&self, path: P) -> Result<Self, Error> {
+        let mut file_path = path.as_ref().to_path_buf();
+        // pub fn load_file(&self, path: &str) -> Result<Self, Error> {
+        // let mut file_path = Path::new(path).to_path_buf();
         if !file_path.has_root() {
             let mut current_path = std::env::current_dir().map_err(|_| Error::File {
-                path: String::from(path),
+                path: String::from(path.as_ref().to_str().unwrap_or("invalid path")),
             })?;
-            current_path.push(path);
+            current_path.push(path.as_ref());
             file_path = current_path;
         }
         let conf = self.config.with_file(file_path);
         let contents = conf.read_file().map_err(|err| Error::File {
-            path: String::from(err.name().unwrap_or(path)),
+            path: String::from(
+                err.name()
+                    .unwrap_or_else(|| path.as_ref().to_str().unwrap_or("invalid path")),
+            ),
         })?;
         Self {
             config: conf,
@@ -473,7 +478,8 @@ impl HoconLoader {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{ConfFileMeta, Error, Hocon, HoconLoader, HoconLoaderConfig};
+    use std::path::Path;
 
     #[test]
     fn read_from_properties() {
@@ -513,7 +519,7 @@ mod tests {
         assert_eq!(doc["a"]["b"].as_string(), Some(String::from("c")));
     }
 
-    use ::serde::Deserialize;
+    use serde::Deserialize;
 
     #[derive(Deserialize, Debug)]
     struct Simple {
