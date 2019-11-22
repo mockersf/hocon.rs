@@ -86,6 +86,7 @@ enum Index {
 
 trait Read {
     fn get_attribute_value(&self, index: &Index) -> Option<&Hocon>;
+    fn get_keys(&self) -> Vec<String>;
 }
 struct HoconRead {
     hocon: Hocon,
@@ -107,6 +108,13 @@ impl Read for HoconRead {
                 v => Some(v),
             },
             _ => None,
+        }
+    }
+
+    fn get_keys(&self) -> Vec<String> {
+        match &self.hocon {
+            Hocon::Hash(map) => map.keys().cloned().collect(),
+            _ => unreachable!(),
         }
     }
 }
@@ -329,14 +337,14 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
     fn deserialize_struct<V>(
         self,
         _name: &'static str,
-        fields: &'static [&'static str],
+        _fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
         match self.current_field {
-            Index::None => visitor.visit_map(MapAccess::new(self, fields)),
+            Index::None => visitor.visit_map(MapAccess::new(self, self.read.get_keys())),
             _ => {
                 let hc = self
                     .read
@@ -345,8 +353,12 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                         message: format!("missing struct for field {:?}", &self.current_field),
                     })?
                     .clone();
+                let keys = match &hc {
+                    Hocon::Hash(hm) => hm.keys().cloned().collect(),
+                    _ => unreachable!(),
+                };
                 let mut des = Deserializer::new(HoconRead::new(hc));
-                visitor.visit_map(MapAccess::new(&mut des, fields))
+                visitor.visit_map(MapAccess::new(&mut des, keys))
             }
         }
     }
@@ -417,12 +429,12 @@ impl<'de, 'a, R: Read + 'a> serde::de::SeqAccess<'de> for SeqAccess<'a, R> {
 
 struct MapAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
-    keys: &'static [&'static str],
+    keys: Vec<String>,
     current: usize,
 }
 
 impl<'a, R: 'a> MapAccess<'a, R> {
-    fn new(de: &'a mut Deserializer<R>, keys: &'static [&'static str]) -> Self {
+    fn new(de: &'a mut Deserializer<R>, keys: Vec<String>) -> Self {
         MapAccess {
             de,
             keys,
@@ -597,5 +609,21 @@ mod tests {
         let res: super::Result<WithArray> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
         assert_eq!(res.expect("during test").a, vec![5, 7]);
+    }
+
+    #[test]
+    fn hocon_and_serde_default() {
+        #[derive(Deserialize, Debug)]
+        struct MyStructWithDefaultField {
+            #[serde(default)]
+            size: f64,
+        }
+
+        // let s: MyStruct = HoconLoader::new().load_str("").unwrap().resolve().unwrap();
+        let doc = Hocon::Hash(HashMap::new());
+
+        let res: super::Result<MyStructWithDefaultField> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").size, 0.);
     }
 }
