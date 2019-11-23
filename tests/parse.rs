@@ -685,14 +685,21 @@ fn parse_concat_arrays_with_plus_equal_with_object() {
     let s = r#"{
         a += { b : 1 }
         a += { b : 2 }
+        a += { b : 3, c : 4 }
+        a += { d : 5, f : { g : 6 } }
     }"#;
-    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s)))
+    let doc: Hocon = dbg!(HoconLoader::new()
+        .load_str(s)
         .expect("during test")
-        .hocon())
-    .expect("during test");
+        .hocon()
+        .expect("during test"));
 
     assert_eq!(doc["a"][0]["b"].as_i64().expect("during test"), 1);
     assert_eq!(doc["a"][1]["b"].as_i64().expect("during test"), 2);
+    assert_eq!(doc["a"][2]["b"].as_i64().expect("during test"), 3);
+    assert_eq!(doc["a"][2]["c"].as_i64().expect("during test"), 4);
+    assert_eq!(doc["a"][3]["d"].as_i64().expect("during test"), 5);
+    assert_eq!(doc["a"][3]["f"]["g"].as_i64().expect("during test"), 6);
 }
 
 #[test]

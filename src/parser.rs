@@ -267,17 +267,20 @@ named_args!(
                     } |
                 // to concat to an array
                 separated_pair!(ws!(string), ws!(tag!("+=")), call!(wrapper, config))
-                    => { |(s, h): (&str, Result<HoconInternal, _>)|
-                        Ok(HoconInternal::from_object(h?.internal)
-                            .transform(|k, v| (
-                                k.clone(),
-                                HoconValue::ToConcatToArray {
-                                    value: Box::new(v),
-                                    array_root: None,
-                                    original_path: k
-                                }
-                            ))
-                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
+                    => { |(s, h): (&str, Result<HoconInternal, _>)| {
+                            let item_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                            Ok(HoconInternal::from_object(h?.internal)
+                                .transform(|k, v| (
+                                    k.clone(),
+                                    HoconValue::ToConcatToArray {
+                                        value: Box::new(v),
+                                        array_root: None,
+                                        original_path: k,
+                                        item_id: item_id.clone(),
+                                    }
+                                ))
+                                .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
+                        }
                     } |
                 separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
                     => { |(s, h): (&str, Result<HoconInternal, _>)|
@@ -291,17 +294,20 @@ named_args!(
                     } |
                 // to concat to an array
                 separated_pair!(ws!(unquoted_string), ws!(tag!("+=")), call!(wrapper, config))
-                    => { |(s, h): (&str, Result<HoconInternal, _>)|
-                        Ok(HoconInternal::from_object(h?.internal)
-                            .transform(|k, v| (
-                                k.clone(),
-                                HoconValue::ToConcatToArray {
-                                    value: Box::new(v),
-                                    array_root: None,
-                                    original_path: k
-                                }
-                            ))
-                            .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal)
+                    => { |(s, h): (&str, Result<HoconInternal, _>)| {
+                            let item_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                            Ok(HoconInternal::from_object(h?.internal)
+                                .transform(|k, v| (
+                                    k.clone(),
+                                    HoconValue::ToConcatToArray {
+                                        value: Box::new(v),
+                                        array_root: None,
+                                        original_path: k,
+                                        item_id: item_id.clone(),
+                                    }
+                                ))
+                                .add_to_path(vec![HoconValue::UnquotedString(String::from(s))]).internal)
+                        }
                     }
             ))
             >> (pair)

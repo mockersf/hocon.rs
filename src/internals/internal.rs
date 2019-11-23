@@ -98,6 +98,7 @@ impl HoconInternal {
             HoconValue::ToConcatToArray {
                 value,
                 original_path,
+                item_id,
                 ..
             } => {
                 let root = k
@@ -111,6 +112,7 @@ impl HoconInternal {
                         value,
                         array_root: Some(root),
                         original_path,
+                        item_id,
                     },
                 )
             }
@@ -263,6 +265,8 @@ impl HoconInternal {
             }),
         });
 
+        let mut concatenated_arrays: HashMap<Path, HashMap<HoconValue, i64>> = HashMap::new();
+
         let mut last_path_encoutered = vec![];
         for (path, item) in self.internal {
             if path.is_empty() {
@@ -289,27 +293,55 @@ impl HoconInternal {
                 HoconValue::ToConcatToArray {
                     value,
                     original_path,
+                    item_id,
                     ..
-                } => (
-                    value.substitute(config, &root, &path),
-                    path.into_iter()
+                } => {
+                    let concat_root: Path = path
+                        .iter()
                         .rev()
                         .skip(original_path.len())
                         .rev()
-                        .chain(std::iter::once(HoconValue::Null))
-                        .chain(original_path.into_iter().flat_map(|path_item| {
-                            match path_item {
-                                HoconValue::UnquotedString(s) => s
-                                    .trim()
-                                    .split('.')
-                                    .map(|s| HoconValue::String(String::from(s)))
-                                    .collect(),
-                                _ => vec![path_item],
-                            }
-                        }))
-                        .collect(),
-                ),
-                v => (v.substitute(config, &root, &path), path),
+                        .cloned()
+                        .collect();
+                    let existing_array = concatenated_arrays
+                        .entry(concat_root.clone())
+                        .or_insert_with(HashMap::new);
+                    let nb_elems = existing_array.keys().len();
+                    let idx = existing_array
+                        .entry(HoconValue::String(item_id.clone()))
+                        .or_insert(nb_elems as i64);
+                    (
+                        value.substitute(config, &root, &path),
+                        concat_root
+                            .into_iter()
+                            .chain(std::iter::once(HoconValue::Integer(*idx)))
+                            .chain(original_path.into_iter().flat_map(|path_item| {
+                                match path_item {
+                                    HoconValue::UnquotedString(s) => s
+                                        .trim()
+                                        .split('.')
+                                        .map(|s| HoconValue::String(String::from(s)))
+                                        .collect(),
+                                    _ => vec![path_item],
+                                }
+                            }))
+                            .collect(),
+                    )
+                }
+                v => {
+                    let mut checked_path: Path = vec![];
+                    for item in path.clone() {
+                        if let HoconValue::Integer(idx) = item {
+                            concatenated_arrays
+                                .entry(checked_path.clone())
+                                .or_insert_with(HashMap::new)
+                                .entry(HoconValue::Integer(idx))
+                                .or_insert(idx);
+                        }
+                        checked_path.push(item);
+                    }
+                    (v.substitute(config, &root, &path), path)
+                }
             };
 
             let mut current_path = vec![];

@@ -18,6 +18,8 @@ pub(crate) enum HoconValue {
         value: Box<HoconValue>,
         array_root: Option<Vec<HoconValue>>,
         original_path: Vec<HoconValue>,
+        // an internal id, to keep track of the current parent object in case of an object to concat to an array
+        item_id: String,
     },
     Null,
     // Placeholder for a value that will be replaced before returning final document
@@ -278,5 +280,20 @@ impl PartialEq for HoconValue {
             (HoconValue::BadValue(left), HoconValue::BadValue(right)) => left == right,
             _ => false,
         }
+    }
+}
+
+impl Eq for HoconValue {}
+
+impl std::hash::Hash for HoconValue {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        match self {
+            HoconValue::Integer(i) => i.hash(state),
+            HoconValue::String(s) => s.hash(state),
+            _ => unreachable!(),
+        };
     }
 }
