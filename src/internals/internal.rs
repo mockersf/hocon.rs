@@ -124,7 +124,8 @@ impl HoconInternal {
         let mut indexer: Box<dyn Fn(i64) -> HoconValue> = Box::new(HoconValue::Integer);
         if !a.is_empty() && a[0].internal.len() == 1 {
             if let HoconValue::PathSubstitutionInParent(_) = a[0].internal[0].1 {
-                indexer = Box::new(HoconValue::Null);
+                let index_prefix = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                indexer = Box::new(move |i| HoconValue::Null(format!("{}-{}", index_prefix, i)));
             }
         }
         if a.is_empty() {
@@ -268,12 +269,12 @@ impl HoconInternal {
         let mut concatenated_arrays: HashMap<Path, HashMap<HoconValue, i64>> = HashMap::new();
 
         let mut last_path_encoutered = vec![];
-        for (path, item) in self.internal {
-            if path.is_empty() {
+        for (raw_path, item) in self.internal {
+            if raw_path.is_empty() {
                 continue;
             }
 
-            let path = path
+            let full_path = raw_path
                 .clone()
                 .into_iter()
                 .flat_map(|path_item| match path_item {
@@ -285,18 +286,20 @@ impl HoconInternal {
                     _ => vec![path_item],
                 })
                 .collect::<Vec<_>>();
+
             let (leaf_value, path) = match item {
-                HoconValue::PathSubstitutionInParent(v) => (
-                    HoconValue::PathSubstitution(v).substitute(config, &root, &path),
-                    path.into_iter().rev().skip(1).rev().collect(),
-                ),
+                HoconValue::PathSubstitutionInParent(v) => {
+                    let subst =
+                        HoconValue::PathSubstitution(v).substitute(config, &root, &full_path);
+                    (subst, full_path.into_iter().rev().skip(1).rev().collect())
+                }
                 HoconValue::ToConcatToArray {
                     value,
                     original_path,
                     item_id,
                     ..
                 } => {
-                    let concat_root: Path = path
+                    let concat_root: Path = full_path
                         .iter()
                         .rev()
                         .skip(original_path.len())
@@ -311,7 +314,7 @@ impl HoconInternal {
                         .entry(HoconValue::String(item_id.clone()))
                         .or_insert(nb_elems as i64);
                     (
-                        value.substitute(config, &root, &path),
+                        value.substitute(config, &root, &full_path),
                         concat_root
                             .into_iter()
                             .chain(std::iter::once(HoconValue::Integer(*idx)))
@@ -330,7 +333,7 @@ impl HoconInternal {
                 }
                 v => {
                     let mut checked_path: Path = vec![];
-                    for item in path.clone() {
+                    for item in full_path.clone() {
                         if let HoconValue::Integer(idx) = item {
                             concatenated_arrays
                                 .entry(checked_path.clone())
@@ -340,7 +343,7 @@ impl HoconInternal {
                         }
                         checked_path.push(item);
                     }
-                    (v.substitute(config, &root, &path), path)
+                    (v.substitute(config, &root, &full_path), full_path)
                 }
             };
 
@@ -379,7 +382,9 @@ impl HoconInternal {
                             (None, _) => {
                                 let new_child = Rc::new(Child {
                                     key: path_item.clone(),
-                                    value: RefCell::new(Node::Leaf(HoconValue::Null(0))),
+                                    value: RefCell::new(Node::Leaf(HoconValue::Null(
+                                        String::from("0"),
+                                    ))),
                                 });
                                 let mut new_children = if children.is_empty() {
                                     children.clone()

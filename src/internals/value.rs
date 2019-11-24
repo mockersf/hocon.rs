@@ -21,7 +21,7 @@ pub(crate) enum HoconValue {
         // an internal id, to keep track of the current parent object in case of an object to concat to an array
         item_id: String,
     },
-    Null(i64),
+    Null(String),
     // Placeholder for a value that will be replaced before returning final document
     Temp,
     // Placeholder to mark an error when not processing document strictly
