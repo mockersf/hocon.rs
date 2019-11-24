@@ -48,7 +48,7 @@ impl Node {
             } => children
                 .first()
                 .map(|ref first| match first.key {
-                    HoconValue::Integer(_) | HoconValue::Null => {
+                    HoconValue::Integer(_) | HoconValue::Null(_) => {
                         Ok(Hocon::Array(crate::helper::extract_result(
                             children
                                 .iter()

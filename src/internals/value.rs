@@ -21,7 +21,7 @@ pub(crate) enum HoconValue {
         // an internal id, to keep track of the current parent object in case of an object to concat to an array
         item_id: String,
     },
-    Null,
+    Null(i64),
     // Placeholder for a value that will be replaced before returning final document
     Temp,
     // Placeholder to mark an error when not processing document strictly
@@ -82,7 +82,7 @@ impl HoconValue {
         included_path: Option<Vec<HoconValue>>,
     ) -> Result<Hocon, crate::Error> {
         match self {
-            HoconValue::Null => Ok(Hocon::Null),
+            HoconValue::Null(_) => Ok(Hocon::Null),
             HoconValue::BadValue(err) => Ok(public_bad_value_or_err!(config, err)),
             HoconValue::Boolean(b) => Ok(Hocon::Boolean(b)),
             HoconValue::Integer(i) => Ok(Hocon::Integer(i)),
@@ -172,7 +172,7 @@ impl HoconValue {
         match self {
             HoconValue::String(s) => s,
             HoconValue::UnquotedString(s) => s,
-            HoconValue::Null => String::from("null"),
+            HoconValue::Null(_) => String::from("null"),
             HoconValue::Integer(i) => i.to_string(),
             _ => unreachable!(),
         }
@@ -278,6 +278,7 @@ impl PartialEq for HoconValue {
             (HoconValue::Integer(left), HoconValue::Integer(right)) => left == right,
             (HoconValue::String(left), HoconValue::String(right)) => left == right,
             (HoconValue::BadValue(left), HoconValue::BadValue(right)) => left == right,
+            (HoconValue::Null(left), HoconValue::Null(right)) => left == right,
             _ => false,
         }
     }

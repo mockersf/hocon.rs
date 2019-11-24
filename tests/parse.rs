@@ -649,6 +649,27 @@ fn parse_concat_arrays_with_self_substitution() {
 }
 
 #[test]
+fn parse_concat_arrays_of_object_with_self_substitution() {
+    let s = r#"{
+        a : [ { a : 1, b : 2 }, { a : 2, b : 4 } ]
+        a : ${a} [ {a : 3, b : 6}, {a : 4, b : 8 } ]
+    }"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+
+    assert_eq!(doc["a"][0]["a"].as_i64().expect("during test"), 1);
+    assert_eq!(doc["a"][0]["b"].as_i64().expect("during test"), 2);
+    assert_eq!(doc["a"][1]["a"].as_i64().expect("during test"), 2);
+    assert_eq!(doc["a"][1]["b"].as_i64().expect("during test"), 4);
+    assert_eq!(doc["a"][2]["a"].as_i64().expect("during test"), 3);
+    assert_eq!(doc["a"][2]["b"].as_i64().expect("during test"), 6);
+    assert_eq!(doc["a"][3]["a"].as_i64().expect("during test"), 4);
+    assert_eq!(doc["a"][3]["b"].as_i64().expect("during test"), 8);
+}
+
+#[test]
 fn parse_concat_arrays_with_plus_equal() {
     let s = r#"{
         a += 1

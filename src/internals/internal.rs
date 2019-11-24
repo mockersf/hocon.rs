@@ -124,7 +124,7 @@ impl HoconInternal {
         let mut indexer: Box<dyn Fn(i64) -> HoconValue> = Box::new(HoconValue::Integer);
         if !a.is_empty() && a[0].internal.len() == 1 {
             if let HoconValue::PathSubstitutionInParent(_) = a[0].internal[0].1 {
-                indexer = Box::new(|_| HoconValue::Null);
+                indexer = Box::new(HoconValue::Null);
             }
         }
         if a.is_empty() {
@@ -379,7 +379,7 @@ impl HoconInternal {
                             (None, _) => {
                                 let new_child = Rc::new(Child {
                                     key: path_item.clone(),
-                                    value: RefCell::new(Node::Leaf(HoconValue::Null)),
+                                    value: RefCell::new(Node::Leaf(HoconValue::Null(0))),
                                 });
                                 let mut new_children = if children.is_empty() {
                                     children.clone()
