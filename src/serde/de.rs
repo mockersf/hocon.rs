@@ -88,6 +88,7 @@ trait Read {
     fn get_attribute_value(&self, index: &Index) -> Option<&Hocon>;
     fn get_keys(&self) -> Vec<String>;
 }
+
 struct HoconRead {
     hocon: Hocon,
 }
@@ -141,11 +142,29 @@ where
 impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
-    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
-        unimplemented!()
+        let f: Hocon = self
+            .read
+            .get_attribute_value(&self.current_field)
+            .ok_or_else(|| Error {
+                message: format!("missing for field {:?}", &self.current_field),
+            })?
+            .clone();
+        match f {
+            Hocon::Boolean(_) => self.deserialize_bool(visitor),
+            Hocon::Real(_) => self.deserialize_f64(visitor),
+            Hocon::Integer(_) => self.deserialize_i64(visitor),
+            Hocon::String(_) => self.deserialize_string(visitor),
+            Hocon::Array(_) => self.deserialize_seq(visitor),
+            Hocon::Hash(_) => self.deserialize_map(visitor),
+            Hocon::Null => self.deserialize_option(visitor),
+            Hocon::BadValue(err) => Err(Error {
+                message: format!("error for field {:?}: {}", &self.current_field, err),
+            }),
+        }
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
@@ -264,18 +283,26 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
         }
     }
 
-    fn deserialize_unit<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
-        unimplemented!()
+        match self
+            .read
+            .get_attribute_value(&self.current_field)
+            .ok_or_else(|| Error {
+                message: format!("missing option for field {:?}", &self.current_field),
+            })? {
+            Hocon::Null => visitor.visit_unit(),
+            _ => visitor.visit_unit(),
+        }
     }
 
-    fn deserialize_unit_struct<V>(self, _name: &'static str, _visitor: V) -> Result<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
-        unimplemented!()
+        self.deserialize_unit(visitor)
     }
 
     fn deserialize_newtype_struct<V>(self, _name: &str, visitor: V) -> Result<V::Value>
@@ -308,38 +335,42 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
         visitor.visit_seq(SeqAccess::new(&mut des))
     }
 
-    fn deserialize_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
-        unimplemented!()
+        let list = self
+            .read
+            .get_attribute_value(&self.current_field)
+            .ok_or_else(|| Error {
+                message: format!("missing sequence for field {:?}", &self.current_field),
+            })?
+            .clone();
+        let read = match list {
+            Hocon::Array(_) | Hocon::Hash(_) => HoconRead { hocon: list },
+            _ => {
+                return Err(Error {
+                    message: "No sequence input found".to_owned(),
+                });
+            }
+        };
+        let mut des = Deserializer::new(read);
+        visitor.visit_seq(SeqAccess::new(&mut des))
     }
 
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
-        _len: usize,
-        _visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        unimplemented!()
-    }
-
-    fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        unimplemented!()
-    }
-
-    fn deserialize_struct<V>(
-        self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
+        len: usize,
         visitor: V,
     ) -> Result<V::Value>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        self.deserialize_tuple(len, visitor)
+    }
+
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
@@ -355,7 +386,11 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                     .clone();
                 let keys = match &hc {
                     Hocon::Hash(hm) => hm.keys().cloned().collect(),
-                    _ => unreachable!(),
+                    _ => {
+                        return Err(Error {
+                            message: format!("invalid type for field {:?}", &self.current_field),
+                        })
+                    }
                 };
                 let mut des = Deserializer::new(HoconRead::new(hc));
                 visitor.visit_map(MapAccess::new(&mut des, keys))
@@ -363,16 +398,69 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
         }
     }
 
-    fn deserialize_enum<V>(
+    fn deserialize_struct<V>(
         self,
-        _name: &str,
-        _variants: &'static [&'static str],
-        _visitor: V,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        visitor: V,
     ) -> Result<V::Value>
     where
         V: serde::de::Visitor<'de>,
     {
-        unimplemented!()
+        self.deserialize_map(visitor)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        let hc = self
+            .read
+            .get_attribute_value(&self.current_field)
+            .ok_or_else(|| Error {
+                message: format!("missing struct for field {:?}", &self.current_field),
+            })?
+            .clone();
+
+        match &hc {
+            Hocon::String(name) => {
+                let index = Index::String(String::from(name));
+                let reader = HoconRead::new(hc);
+                let deserializer = &mut Deserializer::new(reader);
+                deserializer.current_field = index;
+                visitor.visit_enum(UnitVariantAccess::new(deserializer))
+            }
+            Hocon::Hash(variant_map) => {
+                let mut keys = variant_map.keys();
+                let first_key = keys.next().ok_or_else(|| Error {
+                    message: format!(
+                        "non unit enum variant should have enum serialized for field {:?}",
+                        &self.current_field
+                    ),
+                })?;
+                if let Some(_other_key) = keys.next() {
+                    return Err(Error {
+                        message: format!(
+                            "non unit enum variant should have enum serialized for field {:?}",
+                            &self.current_field
+                        ),
+                    });
+                }
+                let index = Index::String(String::from(first_key));
+                let reader = HoconRead::new(hc);
+                let deserializer = &mut Deserializer::new(reader);
+                deserializer.current_field = index;
+                visitor.visit_enum(VariantAccess::new(deserializer))
+            }
+            _ => Err(Error {
+                message: format!("invalid type for field {:?}", &self.current_field),
+            }),
+        }
     }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
@@ -466,6 +554,120 @@ impl<'de, 'a, R: Read + 'a> serde::de::MapAccess<'de> for MapAccess<'a, R> {
     {
         self.de.as_key = false;
         seed.deserialize(&mut *self.de)
+    }
+}
+
+struct VariantAccess<'a, R: 'a> {
+    de: &'a mut Deserializer<R>,
+}
+
+impl<'a, R: 'a> VariantAccess<'a, R> {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
+        VariantAccess { de: de }
+    }
+}
+
+impl<'de, 'a, R: Read + 'a> serde::de::EnumAccess<'de> for VariantAccess<'a, R> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
+    where
+        V: serde::de::DeserializeSeed<'de>,
+    {
+        let val = seed.deserialize(&mut *self.de)?;
+        // self.de.parse_object_colon()?;
+        Ok((val, self))
+    }
+}
+
+impl<'de, 'a, R: Read + 'a> serde::de::VariantAccess<'de> for VariantAccess<'a, R> {
+    type Error = Error;
+
+    fn unit_variant(self) -> Result<()> {
+        serde::de::Deserialize::deserialize(self.de)
+    }
+
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
+    where
+        T: serde::de::DeserializeSeed<'de>,
+    {
+        seed.deserialize(self.de)
+    }
+
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        serde::de::Deserializer::deserialize_seq(self.de, visitor)
+    }
+
+    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> Result<V::Value>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        serde::de::Deserializer::deserialize_struct(self.de, "", fields, visitor)
+    }
+}
+
+struct UnitVariantAccess<'a, R: 'a> {
+    de: &'a mut Deserializer<R>,
+}
+
+impl<'a, R: 'a> UnitVariantAccess<'a, R> {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
+        UnitVariantAccess { de: de }
+    }
+}
+
+impl<'de, 'a, R: Read + 'a> serde::de::EnumAccess<'de> for UnitVariantAccess<'a, R> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
+    where
+        V: serde::de::DeserializeSeed<'de>,
+    {
+        let variant = seed.deserialize(&mut *self.de)?;
+        Ok((variant, self))
+    }
+}
+
+impl<'de, 'a, R: Read + 'a> serde::de::VariantAccess<'de> for UnitVariantAccess<'a, R> {
+    type Error = Error;
+
+    fn unit_variant(self) -> Result<()> {
+        Ok(())
+    }
+
+    fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value>
+    where
+        T: serde::de::DeserializeSeed<'de>,
+    {
+        Err(serde::de::Error::invalid_type(
+            serde::de::Unexpected::UnitVariant,
+            &"newtype variant",
+        ))
+    }
+
+    fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        Err(serde::de::Error::invalid_type(
+            serde::de::Unexpected::UnitVariant,
+            &"tuple variant",
+        ))
+    }
+
+    fn struct_variant<V>(self, _fields: &'static [&'static str], _visitor: V) -> Result<V::Value>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        Err(serde::de::Error::invalid_type(
+            serde::de::Unexpected::UnitVariant,
+            &"struct variant",
+        ))
     }
 }
 
@@ -625,5 +827,150 @@ mod tests {
         let res: super::Result<MyStructWithDefaultField> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
         assert_eq!(res.expect("during test").size, 0.);
+    }
+
+    #[test]
+    fn unit_struct() {
+        #[derive(Deserialize, Debug, PartialEq)]
+        struct UnitStruct;
+
+        #[derive(Deserialize, Debug)]
+        struct MyStruct {
+            item: UnitStruct,
+        }
+
+        let mut hm = HashMap::new();
+        hm.insert(String::from("item"), Hocon::Null);
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStruct> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").item, UnitStruct);
+    }
+
+    #[test]
+    fn tuple() {
+        #[derive(Deserialize, Debug)]
+        struct MyStruct {
+            item: (u64, String),
+        }
+
+        let mut hm = HashMap::new();
+        let mut vec_sub = vec![];
+        vec_sub.push(Hocon::Integer(0));
+        vec_sub.push(Hocon::String(String::from("Hello")));
+        hm.insert(String::from("item"), Hocon::Array(vec_sub));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStruct> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").item, (0, "Hello".to_string()));
+    }
+
+    #[test]
+    fn tuple_struct() {
+        #[derive(Deserialize, Debug, PartialEq)]
+        struct TupleStruct(u64, String);
+
+        #[derive(Deserialize, Debug)]
+        struct MyStruct {
+            item: TupleStruct,
+        }
+
+        let mut hm = HashMap::new();
+        let mut vec_sub = vec![];
+        vec_sub.push(Hocon::Integer(0));
+        vec_sub.push(Hocon::String(String::from("Hello")));
+        hm.insert(String::from("item"), Hocon::Array(vec_sub));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStruct> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(
+            res.expect("during test").item,
+            TupleStruct(0, "Hello".to_string())
+        );
+    }
+
+    #[test]
+    fn map() {
+        #[derive(Deserialize, Debug)]
+        struct MyStruct {
+            item: HashMap<String, u64>,
+        }
+
+        let mut hm = HashMap::new();
+        let mut hm_sub = HashMap::new();
+        hm_sub.insert(String::from("Hello"), Hocon::Integer(7));
+        hm.insert(String::from("item"), Hocon::Hash(hm_sub));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStruct> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").item.get("Hello"), Some(&7));
+    }
+
+    #[derive(Deserialize, Debug, PartialEq)]
+    enum MyEnum {
+        UnitVariant,
+        TupleVariant(u64, bool),
+        StructVariant { u: u64, b: bool },
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct MyStructWithEnum {
+        item: MyEnum,
+    }
+
+    #[test]
+    fn deserialize_unit_enum() {
+        let mut hm = HashMap::new();
+        hm.insert(
+            String::from("item"),
+            Hocon::String(String::from("UnitVariant")),
+        );
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStructWithEnum> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").item, MyEnum::UnitVariant);
+    }
+
+    #[test]
+    fn deserialize_tuple_enum() {
+        let mut hm = HashMap::new();
+        let mut sub_hm = HashMap::new();
+        sub_hm.insert(String::from("u"), Hocon::Integer(12));
+        sub_hm.insert(String::from("b"), Hocon::Boolean(true));
+        let mut variant_map = HashMap::new();
+        variant_map.insert(String::from("StructVariant"), Hocon::Hash(sub_hm));
+        hm.insert(String::from("item"), Hocon::Hash(variant_map));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStructWithEnum> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(
+            res.expect("during test").item,
+            MyEnum::StructVariant { u: 12, b: true }
+        );
+    }
+
+    #[test]
+    fn deserialize_struct_enum() {
+        let mut hm = HashMap::new();
+        let mut sub_vec = vec![];
+        sub_vec.push(Hocon::Integer(7));
+        sub_vec.push(Hocon::Boolean(false));
+        let mut variant_map = HashMap::new();
+        variant_map.insert(String::from("TupleVariant"), Hocon::Array(sub_vec));
+        hm.insert(String::from("item"), Hocon::Hash(variant_map));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<MyStructWithEnum> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(
+            res.expect("during test").item,
+            MyEnum::TupleVariant(7, false)
+        );
     }
 }
