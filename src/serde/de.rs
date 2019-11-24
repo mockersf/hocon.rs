@@ -563,7 +563,7 @@ struct VariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> VariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        VariantAccess { de: de }
+        VariantAccess { de }
     }
 }
 
@@ -576,7 +576,6 @@ impl<'de, 'a, R: Read + 'a> serde::de::EnumAccess<'de> for VariantAccess<'a, R> 
         V: serde::de::DeserializeSeed<'de>,
     {
         let val = seed.deserialize(&mut *self.de)?;
-        // self.de.parse_object_colon()?;
         Ok((val, self))
     }
 }
@@ -616,7 +615,7 @@ struct UnitVariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> UnitVariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        UnitVariantAccess { de: de }
+        UnitVariantAccess { de }
     }
 }
 
