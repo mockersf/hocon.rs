@@ -478,7 +478,7 @@ impl HoconLoader {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfFileMeta, Error, Hocon, HoconLoader, HoconLoaderConfig};
+    use super::{ConfFileMeta, Hocon, HoconLoader, HoconLoaderConfig};
     use std::path::Path;
 
     #[test]
@@ -609,7 +609,7 @@ mod tests {
         assert!(res.is_err());
         assert_eq!(
             res.unwrap_err(),
-            Error::Deserialization {
+            super::Error::Deserialization {
                 message: String::from("missing integer for field String(\"int\")")
             }
         );
@@ -624,11 +624,11 @@ mod tests {
             .unwrap()
             .hocon())
         .unwrap();
-        assert_eq!(doc["d"], Hocon::BadValue(Error::MissingKey));
+        assert_eq!(doc["d"], Hocon::BadValue(super::Error::MissingKey));
         assert_eq!(
             doc["https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf"],
             Hocon::BadValue(
-                Error::Include {
+                super::Error::Include {
                     path: String::from("https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf")
                 }
             )
