@@ -129,19 +129,47 @@ impl HoconLoaderConfig {
         if let Some(json) = s.json {
             internal = internal.add(
                 crate::parser::root(format!("{}\n\0", json).as_bytes(), self)
-                    .map_err(|_| crate::Error::Parse)?
-                    .1?,
+                    .map_err(|_| crate::Error::Parse)
+                    .and_then(|(remaining, parsed)| {
+                        if Self::remaining_only_whitespace(remaining) {
+                            parsed
+                        } else if self.strict {
+                            Err(crate::Error::Deserialization {
+                                message: String::from("file could not be parsed completely"),
+                            })
+                        } else {
+                            parsed
+                        }
+                    })?,
             );
         };
         if let Some(hocon) = s.hocon {
             internal = internal.add(
                 crate::parser::root(format!("{}\n\0", hocon).as_bytes(), self)
-                    .map_err(|_| crate::Error::Parse)?
-                    .1?,
+                    .map_err(|_| crate::Error::Parse)
+                    .and_then(|(remaining, parsed)| {
+                        if Self::remaining_only_whitespace(remaining) {
+                            parsed
+                        } else if self.strict {
+                            Err(crate::Error::Deserialization {
+                                message: String::from("file could not be parsed completely"),
+                            })
+                        } else {
+                            parsed
+                        }
+                    })?,
             );
         };
 
         Ok(internal)
+    }
+
+    fn remaining_only_whitespace(remaining: &[u8]) -> bool {
+        remaining
+            .iter()
+            .find(|c| **c != 10 && **c != 0)
+            .map(|_| false)
+            .unwrap_or(true)
     }
 
     pub(crate) fn read_file_to_string(path: PathBuf) -> Result<String, failure::Error> {

@@ -446,7 +446,7 @@ named_args!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(hashes, config) => { |h| Ok(HoconInternal::from_object(h?))      } |
+                    call!(hashes, config) => { |h| Ok(HoconInternal::from_object(h?))     } |
                     call!(arrays, config) => { |a| Ok(HoconInternal::from_array(a?))      } |
                     include               => { |f| HoconInternal::from_include(f, config) } |
                     value                 => { |v| Ok(HoconInternal::from_value(v))       }
@@ -461,11 +461,12 @@ named_args!(
         possible_comment
             >> wrapped:
                 alt!(
-                    call!(root_include, config) => { |d| d                                 } |
+                    call!(root_include, config) => { |d| d                                  } |
                     call!(root_hash, config)    => { |h| Ok(HoconInternal::from_object(h?)) } |
                     call!(hash, config)         => { |h| Ok(HoconInternal::from_object(h?)) } |
-                    call!(array, config)        => { |a| Ok(HoconInternal::from_array(a?)) }
+                    call!(array, config)        => { |a| Ok(HoconInternal::from_array(a?))  }
                 )
+            >> possible_comment
             >> (wrapped)
     )
 );
