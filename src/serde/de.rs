@@ -150,7 +150,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing for field {:?}", &self.current_field),
+                message: format!("missing value for field {:?}", self.current_field),
             })?
             .clone();
         match f {
@@ -162,7 +162,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             Hocon::Hash(_) => self.deserialize_map(visitor),
             Hocon::Null => self.deserialize_option(visitor),
             Hocon::BadValue(err) => Err(Error {
-                message: format!("error for field {:?}: {}", &self.current_field, err),
+                message: format!("error for field {:?}: {}", self.current_field, err),
             }),
         }
     }
@@ -175,12 +175,12 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             self.read
                 .get_attribute_value(&self.current_field)
                 .ok_or_else(|| Error {
-                    message: "Missing field".to_owned(),
+                    message: format!("Missing field {:?}", self.current_field),
                 })?
                 .clone()
                 .as_bool()
                 .ok_or_else(|| Error {
-                    message: "Invalid type".to_owned(),
+                    message: format!("Expected boolean value for field {:?}", self.current_field),
                 })?,
         )
     }
@@ -208,16 +208,16 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             self.read
                 .get_attribute_value(&self.current_field)
                 .ok_or_else(|| Error {
-                    message: format!("missing char for field {:?}", &self.current_field),
+                    message: format!("missing char for field {:?}", self.current_field),
                 })?
                 .clone()
                 .as_string()
                 .ok_or_else(|| Error {
-                    message: format!("missing char for field {:?}", &self.current_field),
+                    message: format!("missing char for field {:?}", self.current_field),
                 })?
                 .parse::<char>()
                 .map_err(|_| Error {
-                    message: "Invalid type".to_owned(),
+                    message: format!("Expected char type for field {:?}", self.current_field),
                 })?,
         )
     }
@@ -320,14 +320,14 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing sequence for field {:?}", &self.current_field),
+                message: format!("missing sequence for field {:?}", self.current_field),
             })?
             .clone();
         let read = match list {
             Hocon::Array(_) | Hocon::Hash(_) => HoconRead { hocon: list },
             _ => {
                 return Err(Error {
-                    message: "No sequence input found".to_owned(),
+                    message: format!("No sequence input found for field {:?}", self.current_field),
                 });
             }
         };
@@ -350,7 +350,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             Hocon::Array(_) | Hocon::Hash(_) => HoconRead { hocon: list },
             _ => {
                 return Err(Error {
-                    message: "No sequence input found".to_owned(),
+                    message: format!("No sequence input found for field {:?}", self.current_field),
                 });
             }
         };
