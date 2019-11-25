@@ -12,12 +12,12 @@ macro_rules! impl_deserialize_n {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing integer for field {:?}",
-                                                            &self.current_field) })?
+                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
+                                                            self.current_field) })?
                     .clone()
                     .as_i64()
-                    .ok_or_else(|| Error { message: format!("missing integer for field {:?}",
-                                                            &self.current_field) })?
+                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
+                                                            self.current_field) })?
             )
         }
     };
@@ -29,12 +29,12 @@ macro_rules! impl_deserialize_n {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing integer for field {:?}",
-                                                            &self.current_field) })?
+                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
+                                                            self.current_field) })?
                     .clone()
                     .as_i64()
-                    .ok_or_else(|| Error { message: format!("missing integer for field {:?}",
-                                                            &self.current_field) })? as $type
+                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
+                                                            self.current_field) })? as $type
             )
         }
     };
@@ -48,12 +48,12 @@ macro_rules! impl_deserialize_f {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing float for field {:?}",
-                                                            &self.current_field) })?
+                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
+                                                            self.current_field) })?
                     .clone()
                     .as_f64()
-                    .ok_or_else(|| Error { message: format!("missing float for field {:?}",
-                                                            &self.current_field) })?
+                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
+                                                            self.current_field) })?
             )
         }
 
@@ -66,12 +66,12 @@ macro_rules! impl_deserialize_f {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing float for field {:?}",
-                                                            &self.current_field) })?
+                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
+                                                            self.current_field) })?
                     .clone()
                     .as_f64()
-                    .ok_or_else(|| Error { message: format!("missing float for field {:?}",
-                                                            &self.current_field) })? as $type
+                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
+                                                            self.current_field) })? as $type
             )
         }
     };
@@ -82,6 +82,16 @@ enum Index {
     String(String),
     Number(usize),
     None,
+}
+
+impl std::fmt::Display for Index {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Index::String(field) => write!(f, "{}", field),
+            Index::Number(field) => write!(f, "{}", field),
+            Index::None => write!(f, ""),
+        }
+    }
 }
 
 trait Read {
@@ -150,7 +160,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing value for field {:?}", self.current_field),
+                message: format!("missing value for field \"{}\"", self.current_field),
             })?
             .clone();
         match f {
@@ -162,7 +172,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             Hocon::Hash(_) => self.deserialize_map(visitor),
             Hocon::Null => self.deserialize_option(visitor),
             Hocon::BadValue(err) => Err(Error {
-                message: format!("error for field {:?}: {}", self.current_field, err),
+                message: format!("error for field \"{}\": {}", self.current_field, err),
             }),
         }
     }
@@ -175,12 +185,15 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             self.read
                 .get_attribute_value(&self.current_field)
                 .ok_or_else(|| Error {
-                    message: format!("Missing field {:?}", self.current_field),
+                    message: format!("Missing field \"{}\"", self.current_field),
                 })?
                 .clone()
                 .as_bool()
                 .ok_or_else(|| Error {
-                    message: format!("Expected boolean value for field {:?}", self.current_field),
+                    message: format!(
+                        "Invalid type for field \"{}\", expected bool",
+                        self.current_field
+                    ),
                 })?,
         )
     }
@@ -208,16 +221,16 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             self.read
                 .get_attribute_value(&self.current_field)
                 .ok_or_else(|| Error {
-                    message: format!("missing char for field {:?}", self.current_field),
+                    message: format!("missing char for field \"{}\"", self.current_field),
                 })?
                 .clone()
                 .as_string()
                 .ok_or_else(|| Error {
-                    message: format!("missing char for field {:?}", self.current_field),
+                    message: format!("missing char for field \"{}\"", self.current_field),
                 })?
                 .parse::<char>()
                 .map_err(|_| Error {
-                    message: format!("Expected char type for field {:?}", self.current_field),
+                    message: format!("Expected char type for field \"{}\"", self.current_field),
                 })?,
         )
     }
@@ -236,7 +249,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                 .clone()
                 .as_string()
                 .ok_or_else(|| Error {
-                    message: format!("missing string for field {:?}", &self.current_field),
+                    message: format!("missing string for field \"{}\"", self.current_field),
                 })
                 .and_then(|string_field| visitor.visit_str(&string_field))
         } else {
@@ -276,7 +289,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing option for field {:?}", &self.current_field),
+                message: format!("missing option for field \"{}\"", self.current_field),
             })? {
             Hocon::Null => visitor.visit_none(),
             _ => visitor.visit_some(self),
@@ -291,7 +304,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing option for field {:?}", &self.current_field),
+                message: format!("missing option for field \"{}\"", self.current_field),
             })? {
             Hocon::Null => visitor.visit_unit(),
             _ => visitor.visit_unit(),
@@ -320,14 +333,17 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing sequence for field {:?}", self.current_field),
+                message: format!("missing sequence for field \"{}\"", self.current_field),
             })?
             .clone();
         let read = match list {
             Hocon::Array(_) | Hocon::Hash(_) => HoconRead { hocon: list },
             _ => {
                 return Err(Error {
-                    message: format!("No sequence input found for field {:?}", self.current_field),
+                    message: format!(
+                        "No sequence input found for field \"{}\"",
+                        self.current_field
+                    ),
                 });
             }
         };
@@ -343,14 +359,17 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing sequence for field {:?}", &self.current_field),
+                message: format!("missing sequence for field \"{}\"", &self.current_field),
             })?
             .clone();
         let read = match list {
             Hocon::Array(_) | Hocon::Hash(_) => HoconRead { hocon: list },
             _ => {
                 return Err(Error {
-                    message: format!("No sequence input found for field {:?}", self.current_field),
+                    message: format!(
+                        "No sequence input found for field \"{}\"",
+                        self.current_field
+                    ),
                 });
             }
         };
@@ -381,14 +400,14 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                     .read
                     .get_attribute_value(&self.current_field)
                     .ok_or_else(|| Error {
-                        message: format!("missing struct for field {:?}", &self.current_field),
+                        message: format!("missing struct for field \"{}\"", self.current_field),
                     })?
                     .clone();
                 let keys = match &hc {
                     Hocon::Hash(hm) => hm.keys().cloned().collect(),
                     _ => {
                         return Err(Error {
-                            message: format!("invalid type for field {:?}", &self.current_field),
+                            message: format!("invalid type for field \"{}\"", self.current_field),
                         })
                     }
                 };
@@ -423,7 +442,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing struct for field {:?}", &self.current_field),
+                message: format!("missing struct for field \"{}\"", self.current_field),
             })?
             .clone();
 
@@ -439,15 +458,15 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                 let mut keys = variant_map.keys();
                 let first_key = keys.next().ok_or_else(|| Error {
                     message: format!(
-                        "non unit enum variant should have enum serialized for field {:?}",
-                        &self.current_field
+                        "non unit enum variant should have enum serialized for field \"{}\"",
+                        self.current_field
                     ),
                 })?;
                 if let Some(_other_key) = keys.next() {
                     return Err(Error {
                         message: format!(
-                            "non unit enum variant should have enum serialized for field {:?}",
-                            &self.current_field
+                            "non unit enum variant should have enum serialized for field \"{}\"",
+                            self.current_field
                         ),
                     });
                 }
@@ -458,7 +477,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
                 visitor.visit_enum(VariantAccess::new(deserializer))
             }
             _ => Err(Error {
-                message: format!("invalid type for field {:?}", &self.current_field),
+                message: format!("invalid type for field \"{}\"", self.current_field),
             }),
         }
     }
