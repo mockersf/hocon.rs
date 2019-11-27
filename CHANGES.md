@@ -1,5 +1,17 @@
 # Changes
 
+## 0.3.1
+
+* fixed various cases around array of object concatenation and substitutions
+[#13](https://github.com/mockersf/hocon.rs/issues/13)
+* fixed deserialization of tuple, enum and unit types 
+* fixed deserialization of missing fields using default [#11](https://github.com/mockersf/hocon.rs/issues/11)
+* fixed ignoring the end of a file if it was invalid Hocon [#15](https://github.com/mockersf/hocon.rs/pull/15)
+* can take a Path to load a file [#10](https://github.com/mockersf/hocon.rs/issues/10)
+* can resolve to a struct only part of the parsed Hocon document to help with complex cases
+[#9](https://github.com/mockersf/hocon.rs/pull/9)
+* improved error messages [#14](https://github.com/mockersf/hocon.rs/pull/14)
+
 ## 0.3.0
 
 * error management
