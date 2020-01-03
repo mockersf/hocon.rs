@@ -289,8 +289,12 @@ impl HoconInternal {
 
             let (leaf_value, path) = match item {
                 HoconValue::PathSubstitutionInParent(v) => {
-                    let subst =
-                        HoconValue::PathSubstitution(v).substitute(config, &root, &full_path);
+                    let subst = HoconValue::PathSubstitution {
+                        target: v,
+                        optional: false,
+                        original: None,
+                    }
+                    .substitute(config, &root, &full_path);
                     (subst, full_path.into_iter().rev().skip(1).rev().collect())
                 }
                 HoconValue::ToConcatToArray {
@@ -349,14 +353,17 @@ impl HoconInternal {
 
             let mut current_path = vec![];
             let mut current_node = Rc::clone(&root);
+            let mut old_node_value_for_optional_substitution = None;
             for path_item in path {
                 current_path.push(path_item.clone());
                 let (target_child, child_list) = match current_node.value.borrow().deref() {
-                    Node::Leaf(_) => {
+                    Node::Leaf(old_value) => {
                         let new_child = Rc::new(Child {
                             key: path_item,
                             value: RefCell::new(Node::Leaf(HoconValue::Temp)),
                         });
+
+                        old_node_value_for_optional_substitution = Some(old_value.clone());
 
                         (Rc::clone(&new_child), vec![Rc::clone(&new_child)])
                     }
@@ -378,7 +385,13 @@ impl HoconInternal {
 
                                 (new_child, new_children)
                             }
-                            (Some(child), _) => (Rc::clone(child), children.clone()),
+                            (Some(child), _) => {
+                                if let Node::Leaf(old_val) = child.value.borrow().deref() {
+                                    old_node_value_for_optional_substitution =
+                                        Some(old_val.clone());
+                                }
+                                (Rc::clone(child), children.clone())
+                            }
                             (None, _) => {
                                 let new_child = Rc::new(Child {
                                     key: path_item.clone(),
@@ -428,7 +441,20 @@ impl HoconInternal {
                 current_node = target_child;
             }
             let mut leaf = current_node.value.borrow_mut();
-            *leaf = leaf_value?;
+
+            *leaf = match leaf_value? {
+                Node::Leaf(HoconValue::PathSubstitution {
+                    target,
+                    optional,
+                    original: previously_set_original,
+                }) => Node::Leaf(HoconValue::PathSubstitution {
+                    target,
+                    optional,
+                    original: previously_set_original
+                        .or_else(|| old_node_value_for_optional_substitution.map(Box::new)),
+                }),
+                v => v,
+            };
             last_path_encoutered = current_path;
         }
 

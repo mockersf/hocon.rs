@@ -213,6 +213,11 @@ named!(
     delimited!(alt!(tag!("${?") | tag!("${")), value, char!('}'))
 );
 
+named!(
+    optional_path_substitution<HoconValue>,
+    delimited!(tag!("${?"), value, char!('}'))
+);
+
 named_args!(
     arrays<'a>(config: &HoconLoaderConfig)<Result<Vec<HoconInternal>, crate::Error>>,
     map!(
@@ -353,7 +358,7 @@ named_args!(
                 Ok(values)
             }
             (Some(subst), _) => {
-                let mut values = vec![(vec![], HoconValue::PathSubstitution(Box::new(subst)))];
+                let mut values = vec![(vec![], HoconValue::PathSubstitution{target: Box::new(subst), optional: false, original: None})];
                 values.append(&mut first_hash?);
                 crate::helper::extract_result(remaining_hashes)?.into_iter().for_each(|mut hash| values.append(&mut hash));
                 Ok(values)
@@ -386,7 +391,10 @@ named!(
         integer =>           { |i| HoconValue::Integer(i)                      } |
         float   =>           { |f| HoconValue::Real(f)                         } |
         boolean =>           { |b| HoconValue::Boolean(b)                      } |
-        path_substitution => { |p| HoconValue::PathSubstitution(Box::new(p))   } |
+        optional_path_substitution =>
+            { |p| HoconValue::PathSubstitution{target: Box::new(p), optional: true, original: None}  } |
+        path_substitution =>
+            { |p| HoconValue::PathSubstitution{target: Box::new(p), optional: false, original: None} } |
         unquoted_string =>   { |s| HoconValue::UnquotedString(String::from(s)) }
     )
 );

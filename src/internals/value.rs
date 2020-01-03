@@ -12,7 +12,11 @@ pub(crate) enum HoconValue {
     UnquotedString(String),
     Boolean(bool),
     Concat(Vec<HoconValue>),
-    PathSubstitution(Box<HoconValue>),
+    PathSubstitution {
+        target: Box<HoconValue>,
+        optional: bool,
+        original: Option<Box<HoconValue>>,
+    },
     PathSubstitutionInParent(Box<HoconValue>),
     ToConcatToArray {
         value: Box<HoconValue>,
@@ -115,7 +119,11 @@ impl HoconValue {
                     .collect::<Vec<String>>()
                     .join("")
             })),
-            HoconValue::PathSubstitution(v) => {
+            HoconValue::PathSubstitution {
+                target: v,
+                optional,
+                original,
+            } => {
                 // second pass for substitution
                 let fixed_up_path = if let Some(included_path) = included_path.clone() {
                     let mut fixed_up_path = included_path
@@ -136,15 +144,20 @@ impl HoconValue {
                         .and_then(|v| v.finalize(root, config, included_path)),
                 ) {
                     (_, true, Err(err)) | (_, true, Ok(Hocon::BadValue(err))) => {
-                        match std::env::var(
-                            v.to_path()
-                                .into_iter()
-                                .map(HoconValue::string_value)
-                                .collect::<Vec<_>>()
-                                .join("."),
+                        match (
+                            std::env::var(
+                                v.to_path()
+                                    .into_iter()
+                                    .map(HoconValue::string_value)
+                                    .collect::<Vec<_>>()
+                                    .join("."),
+                            ),
+                            optional,
+                            original,
                         ) {
-                            Ok(val) => Ok(Hocon::String(val)),
-                            Err(_) => Ok(public_bad_value_or_err!(config, err)),
+                            (Ok(val), _, _) => Ok(Hocon::String(val)),
+                            (_, true, Some(val)) => val.simple_finalize(),
+                            _ => Ok(public_bad_value_or_err!(config, err)),
                         }
                     }
                     (true, _, Err(err)) | (true, _, Ok(Hocon::BadValue(err))) => Err(err),
@@ -168,6 +181,22 @@ impl HoconValue {
         }
     }
 
+    // This method should mostly not be used, and will be called during substitution with default value
+    // It will fail badly if trying to substitue a missing value defaulting to a complex value
+    // For now, it's just a somewhat more complete version of "string_value"
+    pub(crate) fn simple_finalize(self) -> Result<Hocon, crate::Error> {
+        match self {
+            HoconValue::Null(_) => Ok(Hocon::Null),
+            HoconValue::Boolean(b) => Ok(Hocon::Boolean(b)),
+            HoconValue::Integer(i) => Ok(Hocon::Integer(i)),
+            HoconValue::Real(f) => Ok(Hocon::Real(f)),
+            HoconValue::String(s) => Ok(Hocon::String(s)),
+            HoconValue::UnquotedString(ref s) if s == "null" => Ok(Hocon::Null),
+            HoconValue::UnquotedString(s) => Ok(Hocon::String(String::from(s.trim()))),
+            _ => unimplemented!(),
+        }
+    }
+
     pub(crate) fn string_value(self) -> String {
         match self {
             HoconValue::String(s) => s,
@@ -185,11 +214,19 @@ impl HoconValue {
         at_path: &[HoconValue],
     ) -> Result<Node, crate::Error> {
         match self {
-            HoconValue::PathSubstitution(path) => {
+            HoconValue::PathSubstitution {
+                target: path,
+                optional,
+                original,
+            } => {
                 match current_tree.find_key(config, path.to_path()) {
                     Err(_) | Ok(Node::Leaf(HoconValue::BadValue(_))) => {
                         // If node is not found, keep substitution to try again on second pass
-                        Ok(Node::Leaf(HoconValue::PathSubstitution(path)))
+                        Ok(Node::Leaf(HoconValue::PathSubstitution {
+                            target: path,
+                            optional,
+                            original,
+                        }))
                     }
                     Ok(v) => Ok(v.deep_clone()),
                 }
@@ -223,7 +260,7 @@ impl HoconValue {
                 include_root,
             } => {
                 match *value.clone() {
-                    HoconValue::PathSubstitution(path) => {
+                    HoconValue::PathSubstitution { target: path, .. } => {
                         let root_path = at_path
                             .iter()
                             .take(at_path.len() - original_path.len())

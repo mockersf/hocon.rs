@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+
 use hocon::{Error, Hocon, HoconLoader};
 
 #[test]
@@ -365,7 +368,7 @@ fn parse_empty_objects() {
 
 #[test]
 fn parse_missing_substitution() {
-    let s = r#"{a={c=${?b}}}"#;
+    let s = r#"{a={c=${b}}}"#;
     let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
         .expect("during test")
         .hocon()
@@ -377,6 +380,17 @@ fn parse_missing_substitution() {
             key: String::from("b")
         })
     );
+}
+
+#[test]
+fn parse_missing_optional_substitution() {
+    let s = r#"{a={c=${?b}}}"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+
+    assert_eq!(doc["a"]["c"], Hocon::Null);
 }
 
 #[test]
@@ -422,15 +436,113 @@ fn substitute_before_and_after() {
 
 #[test]
 fn environment_variable() {
-    std::env::set_var("MY_VAR_TO_TEST", "GREAT_VALUE");
+    let env_name: String = format!(
+        "e{}",
+        thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(30)
+            .collect::<String>()
+    );
+    let env_value: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+    std::env::set_var(&env_name, &env_value);
 
-    let s = r#"{"var" : ${MY_VAR_TO_TEST} }"#;
-    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+    let s = format!(r#"{{"var" : ${{{}}} }}"#, env_name);
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(&s)))
         .expect("during test")
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["var"].as_string().expect("during test"), "GREAT_VALUE");
+    assert_eq!(doc["var"].as_string().expect("during test"), env_value);
+}
+
+#[test]
+fn environment_variable_with_default_value() {
+    let env_name: String = format!(
+        "e{}",
+        thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(30)
+            .collect::<String>()
+    );
+    let env_value: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+
+    let s = format!(
+        r#"{{
+        "var" : "default"
+        "var" : ${{?{}}}
+    }}"#,
+        env_name
+    );
+
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(&s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+    assert!(doc["var"].as_string().is_some());
+    assert_eq!(doc["var"].as_string().expect("during test"), "default");
+
+    std::env::set_var(&env_name, &env_value);
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(&s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+    assert_eq!(doc["var"].as_string().expect("during test"), env_value);
+}
+
+#[test]
+fn environment_variable_with_default_value_complex() {
+    let env_name: String = format!(
+        "e{}",
+        thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(30)
+            .collect::<String>()
+    );
+    let env_value: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+
+    let s = format!(
+        r#"{{
+        "var" : "default"
+        "var" : ${{?{}}}
+        "var2": ${{var}}
+        "var3": {{"name": ${{var}}, "var": ${{var}}}}
+    }}"#,
+        env_name
+    );
+
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(&s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+    eprintln!("{:?}", doc);
+    assert!(doc["var"].as_string().is_some());
+    assert_eq!(doc["var"].as_string().expect("during test"), "default");
+    assert!(doc["var2"].as_string().is_some());
+    assert_eq!(doc["var2"].as_string().expect("during test"), "default");
+    assert_eq!(
+        doc["var3"]["name"].as_string().expect("during test"),
+        "default"
+    );
+    assert_eq!(
+        doc["var3"]["var"].as_string().expect("during test"),
+        "default"
+    );
+
+    std::env::set_var(&env_name, &env_value);
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(&s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+    assert_eq!(doc["var"].as_string().expect("during test"), env_value);
+    assert_eq!(doc["var2"].as_string().expect("during test"), env_value);
+    assert_eq!(
+        doc["var3"]["name"].as_string().expect("during test"),
+        env_value
+    );
+    assert_eq!(
+        doc["var3"]["var"].as_string().expect("during test"),
+        env_value
+    );
 }
 
 #[test]
