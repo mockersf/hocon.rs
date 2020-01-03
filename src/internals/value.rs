@@ -140,7 +140,7 @@ impl HoconValue {
                     config.strict,
                     config.system,
                     root.tree
-                        .find_key(config, fixed_up_path.clone())
+                        .find_key(config, fixed_up_path)
                         .and_then(|v| v.finalize(root, config, included_path)),
                 ) {
                     (_, true, Err(err)) | (_, true, Ok(Hocon::BadValue(err))) => {
@@ -168,9 +168,7 @@ impl HoconValue {
                 value,
                 include_root,
                 ..
-            } => value
-                .clone()
-                .finalize(root, config, in_concat, include_root),
+            } => value.finalize(root, config, in_concat, include_root),
             // These cases should have been replaced during substitution
             // and not exist anymore at this point
             HoconValue::Temp => unreachable!(),
@@ -267,9 +265,9 @@ impl HoconValue {
                             .cloned()
                             .flat_map(|path_item| path_item.to_path())
                             .collect::<Vec<_>>();
-                        let mut fixed_up_path = root_path.clone();
+                        let mut fixed_up_path = root_path;
                         fixed_up_path.append(&mut path.to_path());
-                        match current_tree.find_key(config, fixed_up_path.clone()) {
+                        match current_tree.find_key(config, fixed_up_path) {
                             Ok(Node::Leaf(HoconValue::BadValue(_))) | Err(_) => (),
                             Ok(new_value) => {
                                 return Ok(new_value.deep_clone());

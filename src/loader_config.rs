@@ -200,7 +200,7 @@ impl HoconLoaderConfig {
                 })
                 .ok(),
                 properties: Self::read_file_to_string({
-                    let mut path = full_path.clone();
+                    let mut path = full_path;
                     path.set_extension("properties");
                     path
                 })
