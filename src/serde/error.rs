@@ -26,11 +26,7 @@ impl std::fmt::Display for Error {
         std::fmt::Display::fmt(&self.message, f)
     }
 }
-impl std::error::Error for Error {
-    fn description(&self) -> &str {
-        &self.message
-    }
-}
+impl std::error::Error for Error {}
 
 #[cfg(test)]
 mod tests {
@@ -43,7 +39,7 @@ mod tests {
         let error: Error = Error::custom("my error");
 
         assert_eq!(format!("{}", error), "my error");
-        assert_eq!(error.description(), "my error");
+        assert_eq!(error.to_string(), "my error");
         assert!(error.source().is_none());
     }
 }
