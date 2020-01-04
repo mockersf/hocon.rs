@@ -236,8 +236,8 @@ impl HoconLoaderConfig {
                     .into())
                 }
             } else if self.external_url {
-                let body = reqwest::get(parsed_url)
-                    .and_then(|mut r| r.text())
+                let body = reqwest::blocking::get(parsed_url)
+                    .and_then(reqwest::blocking::Response::text)
                     .map_err(|_| crate::Error::Include {
                         path: String::from(url),
                     })?;
