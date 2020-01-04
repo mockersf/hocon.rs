@@ -19,7 +19,7 @@ nom = "4.2"
 serde = { version = "1.0", optional = true }
 java-properties = "1.2"
 memchr = "2.2"
-reqwest = { version = "0.9", optional = true }
+reqwest = { version = "0.10", optional = true }
 failure = "0.1"
 uuid = { version = "0.8", features = [ "v4" ] }
 
