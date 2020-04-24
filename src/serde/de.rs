@@ -451,6 +451,17 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             })?
             .clone();
 
+        if let Index::String(ref s) = self.current_field {
+            for v in _variants {
+                if s == v {
+                    let reader = HoconRead::new(hc);
+                    let deserializer = &mut Deserializer::new(reader);
+                    deserializer.current_field = Index::String(String::from(s));
+                    return visitor.visit_enum(UnitVariantAccess::new(deserializer));
+                }
+            }
+        }
+
         match &hc {
             Hocon::String(name) => {
                 let index = Index::String(String::from(name));
@@ -931,6 +942,39 @@ mod tests {
         let res: super::Result<MyStruct> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
         assert_eq!(res.expect("during test").item.get("Hello"), Some(&7));
+    }
+
+    #[test]
+    fn map_with_enum_keys() {
+        #[derive(Deserialize, Debug, Hash, PartialEq, Eq)]
+        enum E {
+            A,
+            B,
+        }
+
+        let mut hm = HashMap::new();
+        hm.insert(String::from("A"), Hocon::Integer(1));
+        hm.insert(String::from("B"), Hocon::Integer(2));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<HashMap<E, u8>> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").get(&E::A), Some(&1));
+
+        #[derive(Deserialize, Debug)]
+        struct S {
+            s: u8,
+        }
+
+        let mut hm = HashMap::new();
+        let mut hm_sub = HashMap::new();
+        hm_sub.insert(String::from("s"), Hocon::Integer(7));
+        hm.insert(String::from("A"), Hocon::Hash(hm_sub));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<HashMap<E, S>> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(res.expect("during test").get(&E::A).unwrap().s, 7);
     }
 
     #[derive(Deserialize, Debug, PartialEq)]
