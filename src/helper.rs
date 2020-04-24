@@ -11,7 +11,7 @@ where
                 .err()
                 .expect("should be err as it was fitlered before")
         })
-        .nth(0)
+        .next()
     {
         return Err(err);
     }

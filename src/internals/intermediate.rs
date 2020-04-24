@@ -101,7 +101,7 @@ impl Node {
             (Node::Leaf(_), ref path) if path.is_empty() => Ok(self.clone()),
             (Node::Node { children, .. }, _) => {
                 let mut iter = path.clone().into_iter();
-                let first = iter.nth(0);
+                let first = iter.next();
                 let remaining = iter.collect();
 
                 match first {
