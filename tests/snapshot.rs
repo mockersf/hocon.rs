@@ -4,7 +4,6 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use insta::assert_debug_snapshot;
-use test_generator;
 
 use hocon::{self, Hocon};
 

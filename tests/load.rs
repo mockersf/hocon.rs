@@ -1,9 +1,5 @@
-use test_generator;
-
 use std::fs::File;
 use std::io::prelude::*;
-
-use hocon;
 
 test_generator::test_expand_paths! { file_load; "tests/data/*.conf" }
 

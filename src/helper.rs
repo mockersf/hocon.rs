@@ -9,9 +9,9 @@ where
         .map(|v| {
             v.clone()
                 .err()
-                .expect("should be err as it was fitlered before")
+                .expect("should be err as it was filtered before")
         })
-        .nth(0)
+        .next()
     {
         return Err(err);
     }
