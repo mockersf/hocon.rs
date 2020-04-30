@@ -1,5 +1,3 @@
-use serde;
-
 use super::error::{Error, Result};
 use crate::Hocon;
 
@@ -12,12 +10,14 @@ macro_rules! impl_deserialize_n {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
-                                                            self.current_field) })?
+                    .ok_or_else(|| Error {
+                        message: format!("missing integer for field \"{}\"", self.current_field),
+                    })?
                     .clone()
                     .as_i64()
-                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
-                                                            self.current_field) })?
+                    .ok_or_else(|| Error {
+                        message: format!("missing integer for field \"{}\"", self.current_field),
+                    })?,
             )
         }
     };
@@ -29,12 +29,14 @@ macro_rules! impl_deserialize_n {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
-                                                            self.current_field) })?
+                    .ok_or_else(|| Error {
+                        message: format!("missing integer for field \"{}\"", self.current_field),
+                    })?
                     .clone()
                     .as_i64()
-                    .ok_or_else(|| Error { message: format!("missing integer for field \"{}\"",
-                                                            self.current_field) })? as $type
+                    .ok_or_else(|| Error {
+                        message: format!("missing integer for field \"{}\"", self.current_field),
+                    })? as $type,
             )
         }
     };
@@ -48,15 +50,16 @@ macro_rules! impl_deserialize_f {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
-                                                            self.current_field) })?
+                    .ok_or_else(|| Error {
+                        message: format!("missing float for field \"{}\"", self.current_field),
+                    })?
                     .clone()
                     .as_f64()
-                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
-                                                            self.current_field) })?
+                    .ok_or_else(|| Error {
+                        message: format!("missing float for field \"{}\"", self.current_field),
+                    })?,
             )
         }
-
     };
     ($type:ty, $method:ident, $visit:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value>
@@ -66,12 +69,14 @@ macro_rules! impl_deserialize_f {
             visitor.$visit(
                 self.read
                     .get_attribute_value(&self.current_field)
-                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
-                                                            self.current_field) })?
+                    .ok_or_else(|| Error {
+                        message: format!("missing float for field \"{}\"", self.current_field),
+                    })?
                     .clone()
                     .as_f64()
-                    .ok_or_else(|| Error { message: format!("missing float for field \"{}\"",
-                                                            self.current_field) })? as $type
+                    .ok_or_else(|| Error {
+                        message: format!("missing float for field \"{}\"", self.current_field),
+                    })? as $type,
             )
         }
     };
