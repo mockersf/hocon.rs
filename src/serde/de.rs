@@ -161,24 +161,28 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
     where
         V: serde::de::Visitor<'de>,
     {
-        let f: Hocon = self
-            .read
-            .get_attribute_value(&self.current_field)
-            .ok_or_else(|| Error {
-                message: format!("missing value for field \"{}\"", self.current_field),
-            })?
-            .clone();
-        match f {
-            Hocon::Boolean(_) => self.deserialize_bool(visitor),
-            Hocon::Real(_) => self.deserialize_f64(visitor),
-            Hocon::Integer(_) => self.deserialize_i64(visitor),
-            Hocon::String(_) => self.deserialize_string(visitor),
-            Hocon::Array(_) => self.deserialize_seq(visitor),
-            Hocon::Hash(_) => self.deserialize_map(visitor),
-            Hocon::Null => self.deserialize_option(visitor),
-            Hocon::BadValue(err) => Err(Error {
-                message: format!("error for field \"{}\": {}", self.current_field, err),
-            }),
+        if self.as_key {
+            self.deserialize_identifier(visitor)
+        } else {
+            let f: Hocon = self
+                .read
+                .get_attribute_value(&self.current_field)
+                .ok_or_else(|| Error {
+                    message: format!("missing value for field \"{}\"", self.current_field),
+                })?
+                .clone();
+            match f {
+                Hocon::Boolean(_) => self.deserialize_bool(visitor),
+                Hocon::Real(_) => self.deserialize_f64(visitor),
+                Hocon::Integer(_) => self.deserialize_i64(visitor),
+                Hocon::String(_) => self.deserialize_string(visitor),
+                Hocon::Array(_) => self.deserialize_seq(visitor),
+                Hocon::Hash(_) => self.deserialize_map(visitor),
+                Hocon::Null => self.deserialize_option(visitor),
+                Hocon::BadValue(err) => Err(Error {
+                    message: format!("error for field \"{}\": {}", self.current_field, err),
+                }),
+            }
         }
     }
 
@@ -437,7 +441,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
     fn deserialize_enum<V>(
         self,
         _name: &str,
-        _variants: &'static [&'static str],
+        variants: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
@@ -452,7 +456,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
             .clone();
 
         if let Index::String(ref s) = self.current_field {
-            for v in _variants {
+            for v in variants {
                 if s == v {
                     let reader = HoconRead::new(hc);
                     let deserializer = &mut Deserializer::new(reader);
@@ -502,12 +506,7 @@ impl<'de, 'a, R: Read> serde::de::Deserializer<'de> for &'a mut Deserializer<R> 
     where
         V: serde::de::Visitor<'de>,
     {
-        match self.current_field {
-            Index::String(ref value) => visitor.visit_str(&value.clone()),
-            _ => Err(Error {
-                message: "indentifier should be a string".to_string(),
-            }),
-        }
+        self.deserialize_str(visitor)
     }
 
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
@@ -558,6 +557,7 @@ struct MapAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> MapAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>, keys: Vec<String>) -> Self {
+        de.as_key = true;
         MapAccess {
             de,
             keys,
@@ -598,6 +598,7 @@ struct VariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> VariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
+        de.as_key = true;
         VariantAccess { de }
     }
 }
@@ -650,6 +651,7 @@ struct UnitVariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> UnitVariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
+        de.as_key = true;
         UnitVariantAccess { de }
     }
 }
@@ -1038,6 +1040,35 @@ mod tests {
         assert_eq!(
             res.expect("during test").item,
             MyEnum::TupleVariant(7, false)
+        );
+    }
+
+    #[test]
+    fn deserialize_tagged_enum() {
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct Container {
+            rp: RetryPolicy,
+        }
+        #[derive(Debug, Deserialize, PartialEq)]
+        #[serde(tag = "type")]
+        pub enum RetryPolicy {
+            NoRetry,
+            Asap { num_retries: u32 },
+        }
+
+        let mut hm = HashMap::new();
+        let mut sub_hm = HashMap::new();
+        // sub_hm.insert(String::from("type"), Hocon::String(String::from("NoRetry")));
+        sub_hm.insert(String::from("type"), Hocon::String(String::from("Asap")));
+        sub_hm.insert(String::from("num_retries"), Hocon::Integer(7));
+        hm.insert(String::from("rp"), Hocon::Hash(sub_hm));
+        let doc = Hocon::Hash(hm);
+
+        let res: super::Result<Container> = dbg!(super::from_hocon(dbg!(doc)));
+        assert!(res.is_ok());
+        assert_eq!(
+            res.expect("during test").rp,
+            RetryPolicy::Asap { num_retries: 7 }
         );
     }
 }
