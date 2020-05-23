@@ -167,7 +167,11 @@ impl HoconLoaderConfig {
     fn remaining_only_whitespace(remaining: &[u8]) -> bool {
         remaining
             .iter()
-            .find(|c| **c != 10 && **c != 0)
+            .find(|c| {
+                **c != 10 // \n
+                && **c != 13 // \r
+                && **c != 0
+            })
             .map(|_| false)
             .unwrap_or(true)
     }

@@ -17,6 +17,17 @@ fn parse_string() {
 }
 
 #[test]
+fn parse_string_strict_with_windows_newline() {
+    let s = "{\"a\":\r\n\"dndjf\"\r\n}\r\n";
+    let doc: Hocon = dbg!(HoconLoader::new().strict().load_str(dbg!(s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+
+    assert_eq!(doc["a"].as_string().expect("during test"), "dndjf");
+}
+
+#[test]
 fn parse_int() {
     let s = r#"{"a":5}"#;
     let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
