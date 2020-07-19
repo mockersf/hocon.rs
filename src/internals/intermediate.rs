@@ -169,6 +169,7 @@ pub(crate) struct HoconIntermediate {
 
 impl HoconIntermediate {
     pub(crate) fn finalize(self, config: &HoconLoaderConfig) -> Result<Hocon, crate::Error> {
+        #[allow(clippy::redundant_clone)] // looks like https://github.com/rust-lang/rust-clippy/issues/5707
         let refself = &self.clone();
         self.tree.finalize(refself, config, None)
     }
