@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error","Errors that can be encountered while reading a HOCON document"],["Hocon","An HOCON document"]],"struct":[["HoconLoader","Helper to load an HOCON file. This is used to set up the HOCON loader's option, like strict mode, disabling system environment, and to buffer several documents."]]});
