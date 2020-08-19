@@ -193,7 +193,9 @@ impl HoconLoaderConfig {
             Some(FileType::All) => Ok(FileRead {
                 hocon: Self::read_file_to_string({
                     let mut path = full_path.clone();
-                    path.set_extension("conf");
+                    if !path.exists() {
+                        path.set_extension("conf");
+                    }
                     path
                 })
                 .ok(),
