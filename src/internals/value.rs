@@ -329,7 +329,10 @@ impl std::hash::Hash for HoconValue {
         match self {
             HoconValue::Integer(i) => i.hash(state),
             HoconValue::String(s) => s.hash(state),
-            _ => unreachable!(),
+            _ => {
+                println!("{:?}", self);
+                unreachable!()
+            }
         };
     }
 }
