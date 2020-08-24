@@ -125,6 +125,7 @@ impl HoconInternal {
         if !a.is_empty() && a[0].internal.len() == 1 {
             if let HoconValue::PathSubstitutionInParent(_) = a[0].internal[0].1 {
                 let index_prefix = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                println!("new index {:?} for {:?}", index_prefix, a);
                 indexer = Box::new(move |i| HoconValue::Null(format!("{}-{}", index_prefix, i)));
             }
         }
@@ -266,10 +267,14 @@ impl HoconInternal {
             }),
         });
 
+        println!("merging");
+
         let mut concatenated_arrays: HashMap<Path, HashMap<HoconValue, i64>> = HashMap::new();
 
         let mut last_path_encoutered = vec![];
         for (raw_path, item) in self.internal {
+            println!("accumulated: {:?}", concatenated_arrays);
+            println!("adding {:?} - {:?}", raw_path, item);
             if raw_path.is_empty() {
                 continue;
             }
@@ -310,6 +315,7 @@ impl HoconInternal {
                         .rev()
                         .cloned()
                         .collect();
+                    println!("ToConcatToArray - key: {:?}", concat_root);
                     let existing_array = concatenated_arrays
                         .entry(concat_root.clone())
                         .or_insert_with(HashMap::new);
@@ -336,8 +342,10 @@ impl HoconInternal {
                     )
                 }
                 v => {
+                    println!("-- value: {:?}", v);
                     let mut checked_path: Path = vec![];
                     for item in full_path.clone() {
+                        println!("----> item: {:?} | {:?}", item, checked_path);
                         if let HoconValue::Integer(idx) = item {
                             concatenated_arrays
                                 .entry(checked_path.clone())
@@ -347,6 +355,7 @@ impl HoconInternal {
                         }
                         checked_path.push(item);
                     }
+                    println!("-- done for value");
                     (v.substitute(config, &root, &full_path), full_path)
                 }
             };
