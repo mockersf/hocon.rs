@@ -273,7 +273,6 @@ impl HoconInternal {
 
         let mut last_path_encoutered = vec![];
         for (raw_path, item) in self.internal {
-            println!("accumulated: {:?}", concatenated_arrays);
             println!("adding {:?} - {:?}", raw_path, item);
             if raw_path.is_empty() {
                 continue;
