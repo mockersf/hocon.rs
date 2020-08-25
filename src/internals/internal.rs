@@ -335,6 +335,16 @@ impl HoconInternal {
                             .collect(),
                     )
                 }
+                HoconValue::PathSubstitution { ref target, .. } => {
+                    let value = concatenated_arrays
+                        .get(&target.to_path())
+                        .cloned()
+                        .unwrap_or_else(HashMap::new);
+                    concatenated_arrays
+                        .entry(full_path.clone())
+                        .or_insert(value);
+                    (item.substitute(config, &root, &full_path), full_path)
+                }
                 v => {
                     let mut checked_path: Path = vec![];
                     for item in full_path.clone() {
@@ -373,6 +383,7 @@ impl HoconInternal {
                         match (exist, first_key) {
                             (_, Some(HoconValue::Integer(0)))
                                 if path_item == HoconValue::Integer(0)
+                                    && last_path_encoutered.len() >= current_path.len()
                                     && current_path.as_slice()
                                         != &last_path_encoutered[0..current_path.len()] =>
                             {

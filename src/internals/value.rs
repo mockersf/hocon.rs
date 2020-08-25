@@ -63,7 +63,7 @@ impl HoconValue {
         }
     }
 
-    fn to_path(&self) -> Vec<HoconValue> {
+    pub(crate) fn to_path(&self) -> Vec<HoconValue> {
         match self {
             HoconValue::UnquotedString(s) if s == "." => vec![],
             HoconValue::UnquotedString(s) => s

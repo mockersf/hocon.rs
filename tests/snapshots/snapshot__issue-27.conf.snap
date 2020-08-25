@@ -1,0 +1,5 @@
+---
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc)
+---
+"{array1: [1, 2], v: [1, 2, \"v3\"], w: [1, 2, \"w3\"]}"
