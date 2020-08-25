@@ -23,6 +23,40 @@ pub(crate) enum Node {
     },
 }
 
+const STATIC_TRUE: bool = true;
+const STATIC_FALSE: bool = false;
+impl Child {
+    fn is_array_leaf_included(&self) -> bool {
+        *std::cell::Ref::map(self.value.borrow(), |v| {
+            if let Node::Node { children, .. } = v {
+                let is_included_leaf = children
+                    .get(0)
+                    .map(|child| {
+                        *std::cell::Ref::map(child.value.borrow(), |v| {
+                            if let Node::Leaf(l) = v {
+                                if let HoconValue::Included { .. } = l {
+                                    &true
+                                } else {
+                                    &false
+                                }
+                            } else {
+                                &false
+                            }
+                        })
+                    })
+                    .unwrap_or(false);
+                if is_included_leaf {
+                    &STATIC_TRUE
+                } else {
+                    &STATIC_FALSE
+                }
+            } else {
+                &STATIC_FALSE
+            }
+        })
+    }
+}
+
 impl Node {
     pub(crate) fn deep_clone(&self) -> Self {
         match self {
@@ -39,52 +73,83 @@ impl Node {
         root: &HoconIntermediate,
         config: &HoconLoaderConfig,
         included_path: Option<Vec<HoconValue>>,
+        substituting_path: Option<Vec<HoconValue>>,
     ) -> Result<Hocon, crate::Error> {
         match self {
-            Node::Leaf(v) => v.finalize(root, config, false, included_path),
+            Node::Leaf(v) => v.finalize(root, config, false, included_path, substituting_path),
             Node::Node {
                 ref children,
                 ref key_hint,
             } => children
                 .first()
-                .map(|ref first| match first.key {
-                    HoconValue::Integer(_) | HoconValue::Null(_) => {
-                        Ok(Hocon::Array(crate::helper::extract_result(
-                            children
-                                .iter()
-                                .map(|c| {
-                                    c.value.clone().into_inner().finalize(
-                                        root,
-                                        config,
-                                        included_path.clone(),
-                                    )
-                                })
-                                .collect(),
-                        )?))
-                    }
-                    HoconValue::String(_) => Ok(Hocon::Hash(
-                        crate::helper::extract_result(
-                            children
-                                .iter()
-                                .map(|c| {
-                                    (
-                                        c.key.clone().string_value(),
+                .map(
+                    |ref first| match (&first.key, &first.is_array_leaf_included()) {
+                        (HoconValue::Null(_), true) => Ok(Hocon::Array(
+                            crate::helper::extract_result(
+                                children
+                                    .iter()
+                                    .map(|c| {
                                         c.value.clone().into_inner().finalize(
                                             root,
                                             config,
                                             included_path.clone(),
-                                        ),
-                                    )
-                                })
-                                .map(|(k, v)| v.map(|v| (k, v)))
-                                .collect(),
-                        )?
-                        .into_iter()
-                        .collect(),
-                    )),
-                    // Keys should only be integer or strings
-                    _ => unreachable!(),
-                })
+                                            substituting_path.clone(),
+                                        )
+                                    })
+                                    .collect(),
+                            )?
+                            .into_iter()
+                            .map(|v| {
+                                if let Hocon::Array(vs) = v {
+                                    vs.into_iter()
+                                } else {
+                                    vec![v].into_iter()
+                                }
+                            })
+                            .flatten()
+                            .collect(),
+                        )),
+                        (HoconValue::Integer(_), _) | (HoconValue::Null(_), _) => {
+                            Ok(Hocon::Array(crate::helper::extract_result(
+                                children
+                                    .iter()
+                                    .map(|c| {
+                                        c.value.clone().into_inner().finalize(
+                                            root,
+                                            config,
+                                            included_path.clone(),
+                                            substituting_path.clone(),
+                                        )
+                                    })
+                                    .collect(),
+                            )?))
+                        }
+
+                        (HoconValue::String(_), _) => Ok(Hocon::Hash(
+                            crate::helper::extract_result(
+                                children
+                                    .iter()
+                                    .map(|c| {
+                                        (
+                                            c.key.clone().string_value(),
+                                            c.value.clone().into_inner().finalize(
+                                                root,
+                                                config,
+                                                included_path.clone(),
+                                                substituting_path.clone(),
+                                            ),
+                                        )
+                                    })
+                                    .map(|(k, v)| v.map(|v| (k, v)))
+                                    .collect(),
+                            )?
+                            .into_iter()
+                            .collect(),
+                        )),
+                        // Keys should only be integer or strings
+                        _ => unreachable!(),
+                    },
+                )
                 .unwrap_or_else(|| match key_hint {
                     Some(KeyType::Int) => Ok(Hocon::Array(vec![])),
                     Some(KeyType::String) | None => Ok(Hocon::Hash(HashMap::new())),
@@ -172,6 +237,6 @@ impl HoconIntermediate {
         #[allow(clippy::redundant_clone)]
         // looks like https://github.com/rust-lang/rust-clippy/issues/5707
         let refself = &self.clone();
-        self.tree.finalize(refself, config, None)
+        self.tree.finalize(refself, config, None, None)
     }
 }

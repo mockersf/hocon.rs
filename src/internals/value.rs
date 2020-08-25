@@ -84,6 +84,7 @@ impl HoconValue {
         config: &HoconLoaderConfig,
         in_concat: bool,
         included_path: Option<Vec<HoconValue>>,
+        substituting_path: Option<Vec<HoconValue>>,
     ) -> Result<Hocon, crate::Error> {
         match self {
             HoconValue::Null(_) => Ok(Hocon::Null),
@@ -114,7 +115,15 @@ impl HoconValue {
                         }
                         (_, v) => v,
                     })
-                    .map(|v| v.finalize(root, config, true, included_path.clone()))
+                    .map(|v| {
+                        v.finalize(
+                            root,
+                            config,
+                            true,
+                            included_path.clone(),
+                            substituting_path.clone(),
+                        )
+                    })
                     .filter_map(|v| v.ok().and_then(|v| v.as_internal_string()))
                     .collect::<Vec<String>>()
                     .join("")
@@ -136,39 +145,45 @@ impl HoconValue {
                 } else {
                     v.to_path()
                 };
-                match (
-                    config.strict,
-                    config.system,
-                    root.tree
-                        .find_key(config, fixed_up_path)
-                        .and_then(|v| v.finalize(root, config, included_path)),
-                ) {
-                    (_, true, Err(err)) | (_, true, Ok(Hocon::BadValue(err))) => {
-                        match (
-                            std::env::var(
-                                v.to_path()
-                                    .into_iter()
-                                    .map(HoconValue::string_value)
-                                    .collect::<Vec<_>>()
-                                    .join("."),
-                            ),
-                            optional,
-                            original,
-                        ) {
-                            (Ok(val), _, _) => Ok(Hocon::String(val)),
-                            (_, true, Some(val)) => val.simple_finalize(),
-                            _ => Ok(public_bad_value_or_err!(config, err)),
+                if Some(fixed_up_path.clone()) == substituting_path {
+                    Ok(Hocon::Null)
+                } else {
+                    match (
+                        config.strict,
+                        config.system,
+                        root.tree
+                            .find_key(config, fixed_up_path.clone())
+                            .and_then(|v| {
+                                v.finalize(root, config, included_path, Some(fixed_up_path))
+                            }),
+                    ) {
+                        (_, true, Err(err)) | (_, true, Ok(Hocon::BadValue(err))) => {
+                            match (
+                                std::env::var(
+                                    v.to_path()
+                                        .into_iter()
+                                        .map(HoconValue::string_value)
+                                        .collect::<Vec<_>>()
+                                        .join("."),
+                                ),
+                                optional,
+                                original,
+                            ) {
+                                (Ok(val), _, _) => Ok(Hocon::String(val)),
+                                (_, true, Some(val)) => val.simple_finalize(),
+                                _ => Ok(public_bad_value_or_err!(config, err)),
+                            }
                         }
+                        (true, _, Err(err)) | (true, _, Ok(Hocon::BadValue(err))) => Err(err),
+                        (_, _, v) => v,
                     }
-                    (true, _, Err(err)) | (true, _, Ok(Hocon::BadValue(err))) => Err(err),
-                    (_, _, v) => v,
                 }
             }
             HoconValue::Included {
                 value,
                 include_root,
                 ..
-            } => value.finalize(root, config, in_concat, include_root),
+            } => value.finalize(root, config, in_concat, include_root, None),
             // These cases should have been replaced during substitution
             // and not exist anymore at this point
             HoconValue::Temp => unreachable!(),
@@ -258,7 +273,8 @@ impl HoconValue {
                 include_root,
             } => {
                 match *value.clone() {
-                    HoconValue::PathSubstitution { target: path, .. } => {
+                    HoconValue::PathSubstitution { target: path, .. }
+                    | HoconValue::PathSubstitutionInParent(path) => {
                         let root_path = at_path
                             .iter()
                             .take(at_path.len() - original_path.len())
@@ -329,6 +345,8 @@ impl std::hash::Hash for HoconValue {
         match self {
             HoconValue::Integer(i) => i.hash(state),
             HoconValue::String(s) => s.hash(state),
+            HoconValue::UnquotedString(s) => s.hash(state),
+            HoconValue::Null(s) => s.hash(state),
             _ => unreachable!(),
         };
     }

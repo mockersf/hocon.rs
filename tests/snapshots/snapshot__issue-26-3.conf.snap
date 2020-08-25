@@ -1,0 +1,5 @@
+---
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc)
+---
+"{a: null}"

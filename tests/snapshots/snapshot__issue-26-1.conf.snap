@@ -1,0 +1,5 @@
+---
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc)
+---
+"{Fields: [1, 2], WazuhParsers: [{Fields: [1, 2, 3]}]}"
