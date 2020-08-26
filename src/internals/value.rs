@@ -258,14 +258,13 @@ impl HoconValue {
 
                 if substituted
                     .iter()
-                    .filter_map(|node| {
+                    .find(|node| {
                         if let Node::Node { .. } = node {
-                            Some(true)
+                            true
                         } else {
-                            None
+                            false
                         }
                     })
-                    .next()
                     .is_some()
                 {
                     let children = substituted
@@ -281,7 +280,7 @@ impl HoconValue {
                         .enumerate()
                         .filter_map(|(i, child)| match *child.value.borrow() {
                             Node::Leaf(HoconValue::UnquotedString(ref us))
-                                if us.trim().len() == 0 =>
+                                if us.trim().is_empty() =>
                             {
                                 None
                             }
