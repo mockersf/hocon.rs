@@ -250,14 +250,61 @@ impl HoconValue {
                         .into_iter()
                         .map(|v| v.substitute(config, &current_tree, at_path))
                         .map(|v| match v {
-                            Ok(Node::Leaf(value)) => Ok(value),
-                            Err(err) => Ok(bad_value_or_err!(config, err)),
-                            _ => Ok(bad_value_or_err!(config, crate::Error::Parse)),
+                            Ok(node) => Ok(node),
+                            Err(err) => Ok(Node::Leaf(bad_value_or_err!(config, err))),
                         })
                         .collect::<Vec<_>>(),
                 )?;
 
-                Ok(Node::Leaf(HoconValue::Concat(substituted)))
+                if substituted
+                    .iter()
+                    .filter_map(|node| {
+                        if let Node::Node { .. } = node {
+                            Some(true)
+                        } else {
+                            None
+                        }
+                    })
+                    .next()
+                    .is_some()
+                {
+                    let children = substituted
+                        .into_iter()
+                        .map(|node| match node {
+                            Node::Leaf(_) => vec![std::rc::Rc::new(Child {
+                                key: HoconValue::Integer(0),
+                                value: std::cell::RefCell::new(node),
+                            })],
+                            Node::Node { children, .. } => children,
+                        })
+                        .flatten()
+                        .enumerate()
+                        .map(|(i, child)| {
+                            std::rc::Rc::new(Child {
+                                key: HoconValue::Integer(i as i64),
+                                value: child.value.clone(),
+                            })
+                        })
+                        .collect::<Vec<_>>();
+
+                    Ok(Node::Node {
+                        children,
+                        key_hint: None,
+                    })
+                } else {
+                    Ok(Node::Leaf(HoconValue::Concat(
+                        substituted
+                            .into_iter()
+                            .filter_map(|node| {
+                                if let Node::Leaf(value) = node {
+                                    Some(value)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>(),
+                    )))
+                }
             }
             HoconValue::EmptyObject => Ok(Node::Node {
                 children: vec![],
