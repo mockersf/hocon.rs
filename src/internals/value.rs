@@ -258,14 +258,7 @@ impl HoconValue {
 
                 if substituted
                     .iter()
-                    .find(|node| {
-                        if let Node::Node { .. } = node {
-                            true
-                        } else {
-                            false
-                        }
-                    })
-                    .is_some()
+                    .any(|node| matches!(node, Node::Node { .. }))
                 {
                     let children = substituted
                         .into_iter()
