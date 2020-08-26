@@ -279,11 +279,16 @@ impl HoconValue {
                         })
                         .flatten()
                         .enumerate()
-                        .map(|(i, child)| {
-                            std::rc::Rc::new(Child {
+                        .filter_map(|(i, child)| match *child.value.borrow() {
+                            Node::Leaf(HoconValue::UnquotedString(ref us))
+                                if us.trim().len() == 0 =>
+                            {
+                                None
+                            }
+                            _ => Some(std::rc::Rc::new(Child {
                                 key: HoconValue::Integer(i as i64),
                                 value: child.value.clone(),
-                            })
+                            })),
                         })
                         .collect::<Vec<_>>();
 
