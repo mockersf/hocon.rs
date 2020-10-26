@@ -1,6 +1,6 @@
 [package]
 name = "hocon"
-version = "0.3.6"
+version = "0.3.7-dev"
 authors = ["François Mockers <mockersf@gmail.com>"]
 edition = "2018"
 description = "Reads HOCON configuration files"
