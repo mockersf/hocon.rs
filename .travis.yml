@@ -43,27 +43,6 @@ matrix:
       script:
         - cargo test
     - stage: "Advanced Tests"
-      name: coverage
-      env: CACHE_JOB=coverage
-      rust: stable
-      sudo: required
-      install:
-        - cargo install cargo-update || echo "cargo-update already installed"
-        - cargo install cargo-travis || echo "cargo-travis already installed"
-        - cargo install-update -a # update outdated cached binaries
-      script:
-        - cargo coveralls --exclude-pattern tests --no-default-features --features serde-support,url-support # snapshot tests fails when using kcov
-      addons:
-        apt:
-          packages:
-            - libcurl4-openssl-dev
-            - libelf-dev
-            - libdw-dev
-            - binutils-dev
-            - cmake
-          sources:
-            - kalakris-cmake
-    - stage: "Advanced Tests"
       name: hocon_test_suite
       env: CACHE_JOB=stable
       rust: stable
