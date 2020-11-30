@@ -80,7 +80,7 @@ named!(
     delimited!(
         char!('"'),
         map_res!(
-            escaped!(none_of!("\"\n"), '\\', one_of!("\"n\\")),
+            escaped!(none_of!("\\\"\n"), '\\', one_of!("\"n\\")),
             str::from_utf8
         ),
         char!('"')
