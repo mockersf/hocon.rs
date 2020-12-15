@@ -904,3 +904,27 @@ fn parse_include_from_str() {
     assert!(loader.is_err());
     assert_eq!(loader.err(), Some(hocon::Error::IncludeNotAllowedFromStr))
 }
+
+#[test]
+fn hyphen_keys() {
+    let s = r#"
+        concurrency: {
+            server-threads: 16
+            client-threads: 8
+            foo-bar: {
+               nested-config: true
+            }
+          }
+        "#;
+    let doc: Hocon = dbg!(dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .expect("during test")
+        .hocon())
+    .expect("during test");
+
+    assert_eq!(doc["concurrency"]["server-threads"], Hocon::Integer(16));
+    assert_eq!(doc["concurrency"]["client-threads"], Hocon::Integer(8));
+    assert_eq!(
+        doc["concurrency"]["foo-bar"]["nested-config"],
+        Hocon::Boolean(true)
+    );
+}

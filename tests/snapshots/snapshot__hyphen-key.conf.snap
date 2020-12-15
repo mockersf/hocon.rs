@@ -1,0 +1,5 @@
+---
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc)
+---
+"{concurrency: {client-threads: 8, foo-bar: {nested-config: true}, server-threads: 16}}"
