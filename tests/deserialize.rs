@@ -5,6 +5,19 @@ use serde::Deserialize;
 use hocon::HoconLoader;
 
 #[test]
+fn deserialize_struct_simple_path() {
+    #[derive(Deserialize, Debug)]
+    struct Test {
+        a: String,
+    }
+
+    let s = r#"{"a":"dndjf"}"#;
+    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+
+    assert_eq!(doc.a, "dndjf");
+}
+
+#[test]
 fn deserialize_struct() {
     #[derive(Deserialize, Debug)]
     struct Test {

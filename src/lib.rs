@@ -23,6 +23,32 @@
 //!
 //! # Examples
 //!
+//! ## Parsing a string to a struct using serde
+//!
+//! ```rust
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Configuration {
+//!     host: String,
+//!     port: u8,
+//!     auto_connect: bool,
+//! }
+//!
+//! # fn main() -> Result<(), failure::Error> {
+//! let s = r#"{
+//!     host: 127.0.0.1
+//!     port: 80
+//!     auto_connect: false
+//! }"#;
+//!
+//! # #[cfg(feature = "serde-support")]
+//! let conf: Configuration = hocon::de::from_str(s)?;
+//!
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! ## Reading from a string and getting value directly
 //!
 //! ```rust
@@ -167,6 +193,8 @@ pub(crate) use loader_config::*;
 
 #[cfg(feature = "serde-support")]
 mod serde;
+#[cfg(feature = "serde-support")]
+pub use crate::serde::de;
 
 /// Helper to load an HOCON file. This is used to set up the HOCON loader's option,
 /// like strict mode, disabling system environment, and to buffer several documents.

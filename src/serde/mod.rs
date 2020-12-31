@@ -1,4 +1,4 @@
-mod de;
+pub mod de;
 
 mod error;
 

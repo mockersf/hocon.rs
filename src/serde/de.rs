@@ -1,3 +1,5 @@
+//! Deserializer methods using serde
+
 use super::error::{Error, Result};
 use crate::Hocon;
 
@@ -735,6 +737,19 @@ where
     T: serde::de::Deserialize<'de>,
 {
     from_trait(HoconRead::new(hocon))
+}
+
+/// Deserialize a HOCON string directly
+pub fn from_str<'de, T>(hocon: &str) -> std::result::Result<T, crate::Error>
+where
+    T: serde::de::Deserialize<'de>,
+{
+    from_trait(HoconRead::new(
+        crate::HoconLoader::new().load_str(hocon)?.hocon()?,
+    ))
+    .map_err(|err| crate::Error::Deserialization {
+        message: err.message,
+    })
 }
 
 #[cfg(test)]

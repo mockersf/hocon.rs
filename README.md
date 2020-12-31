@@ -11,6 +11,30 @@ first `Error` encountered instead.
 
 ## Examples
 
+### Parsing a string to a struct using serde
+
+```rust
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Configuration {
+    host: String,
+    port: u8,
+    auto_connect: bool,
+}
+
+    fn main() -> Result<(), failure::Error> {
+    let s = r#"{
+        host: 127.0.0.1
+        port: 80
+        auto_connect: false
+    }"#;
+
+    let conf: Configuration = hocon::de::from_str(s)?;
+
+    Ok(())
+```
+
 ### Reading from a string and getting value directly
 
 ```rust
@@ -25,7 +49,7 @@ fn main() -> Result<(), failure::Error> {
 
     let a = doc["a"].as_i64();
     assert_eq!(a, Some(7));
-    
+
     Ok(())
 }
 ```
@@ -57,7 +81,7 @@ fn main() -> Result<(), failure::Error> {
 
     Ok(())
 }
-  ```
+```
 
 ### Reading from a file
 
