@@ -463,9 +463,14 @@ fn environment_variable() {
         thread_rng()
             .sample_iter(&Alphanumeric)
             .take(30)
+            .map(char::from)
             .collect::<String>()
     );
-    let env_value: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+    let env_value: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
     std::env::set_var(&env_name, &env_value);
 
     let s = format!(r#"{{"var" : ${{{}}} }}"#, env_name);
@@ -484,9 +489,14 @@ fn environment_variable_with_default_value() {
         thread_rng()
             .sample_iter(&Alphanumeric)
             .take(30)
+            .map(char::from)
             .collect::<String>()
     );
-    let env_value: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+    let env_value: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
 
     let s = format!(
         r#"{{
@@ -518,9 +528,15 @@ fn environment_variable_with_default_value_complex() {
         thread_rng()
             .sample_iter(&Alphanumeric)
             .take(30)
+            .map(char::from)
             .collect::<String>()
     );
-    let env_value: String = thread_rng().sample_iter(&Alphanumeric).take(30).collect();
+
+    let env_value: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
 
     let s = format!(
         r#"{{
