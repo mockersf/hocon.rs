@@ -1,3 +1,5 @@
+#![cfg(feature = "serde-support")]
+
 use serde::Deserialize;
 
 use hocon::HoconLoader;
