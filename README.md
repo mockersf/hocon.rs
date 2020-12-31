@@ -23,7 +23,7 @@ struct Configuration {
     auto_connect: bool,
 }
 
-    fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), failure::Error> {
     let s = r#"{
         host: 127.0.0.1
         port: 80
@@ -33,6 +33,7 @@ struct Configuration {
     let conf: Configuration = hocon::de::from_str(s)?;
 
     Ok(())
+}
 ```
 
 ### Reading from a string and getting value directly
