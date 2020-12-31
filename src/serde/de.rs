@@ -16,7 +16,10 @@ macro_rules! impl_deserialize_n {
                     .clone()
                     .as_i64()
                     .ok_or_else(|| Error {
-                        message: format!("missing integer for field \"{}\"", self.current_field),
+                        message: format!(
+                            "Invalid type for field \"{}\", expected integer",
+                            self.current_field
+                        ),
                     })?,
             )
         }
@@ -35,7 +38,10 @@ macro_rules! impl_deserialize_n {
                     .clone()
                     .as_i64()
                     .ok_or_else(|| Error {
-                        message: format!("missing integer for field \"{}\"", self.current_field),
+                        message: format!(
+                            "Invalid type for field \"{}\", expected integer",
+                            self.current_field
+                        ),
                     })? as $type,
             )
         }
@@ -56,7 +62,10 @@ macro_rules! impl_deserialize_f {
                     .clone()
                     .as_f64()
                     .ok_or_else(|| Error {
-                        message: format!("missing float for field \"{}\"", self.current_field),
+                        message: format!(
+                            "Invalid type for field \"{}\", expected float",
+                            self.current_field
+                        ),
                     })?,
             )
         }
@@ -75,7 +84,10 @@ macro_rules! impl_deserialize_f {
                     .clone()
                     .as_f64()
                     .ok_or_else(|| Error {
-                        message: format!("missing float for field \"{}\"", self.current_field),
+                        message: format!(
+                            "Invalid type for field \"{}\", expected float",
+                            self.current_field
+                        ),
                     })? as $type,
             )
         }
@@ -713,7 +725,7 @@ where
     T: serde::de::Deserialize<'de>,
 {
     let mut de = Deserializer::new(read);
-    let value = serde::de::Deserialize::deserialize(&mut de)?;
+    let value = serde_path_to_error::deserialize(&mut de)?;
 
     Ok(value)
 }

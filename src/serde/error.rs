@@ -18,6 +18,13 @@ impl serde::de::Error for Error {
         }
     }
 }
+impl<E: std::fmt::Display> From<serde_path_to_error::Error<E>> for Error {
+    fn from(msg: serde_path_to_error::Error<E>) -> Error {
+        Error {
+            message: format!("{}", msg),
+        }
+    }
+}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.message, f)

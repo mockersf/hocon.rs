@@ -610,7 +610,7 @@ mod tests {
         assert_eq!(
             res.unwrap_err(),
             super::Error::Deserialization {
-                message: String::from("missing integer for field \"int\"")
+                message: String::from("int: Invalid type for field \"int\", expected integer")
             }
         );
     }
