@@ -23,7 +23,7 @@ struct Configuration {
     auto_connect: bool,
 }
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Error> {
     let s = r#"{
         host: 127.0.0.1
         port: 80
@@ -41,7 +41,7 @@ fn main() -> Result<(), failure::Error> {
 ```rust
 use hocon::HoconLoader;
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Error> {
     let s = r#"{ a: 7 }"#;
 
     let doc = HoconLoader::new()
@@ -69,7 +69,7 @@ struct Configuration {
     auto_connect: bool,
 }
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Error> {
     let s = r#"{
         host: 127.0.0.1
         port: 80
@@ -89,7 +89,7 @@ fn main() -> Result<(), failure::Error> {
 ```rust
 use hocon::HoconLoader;
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Error> {
     let doc = HoconLoader::new()
         .load_file("tests/data/basic.conf")?
         .hocon()?;
@@ -106,7 +106,7 @@ fn main() -> Result<(), failure::Error> {
 ```rust
 use hocon::HoconLoader;
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Error> {
     let s = r#"{
         a: will be changed
         unchanged: original value
@@ -153,7 +153,7 @@ struct Configuration {
     auto_connect: bool,
 }
 
-# fn main() -> Result<(), failure::Error> {
+# fn main() -> Result<(), Error> {
 let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
 
 # #[cfg(feature = "serde-support")]

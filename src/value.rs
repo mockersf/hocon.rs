@@ -30,7 +30,7 @@ use std::ops::Index;
 ///
 /// ```rust
 /// # use hocon::{HoconLoader, Error, Hocon};
-/// # fn main() -> Result<(), failure::Error> {
+/// # fn main() -> Result<(), Error> {
 /// // Accessing a value of the expected type
 /// assert_eq!(
 ///     HoconLoader::new().load_str(r#"{ a: 7 }"#)?.hocon()?["a"].as_i64(),
@@ -214,7 +214,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ size = 1.5KiB }"#)?.hocon()?["size"].as_bytes(),
     ///     Some(1536.0)
@@ -260,7 +260,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_milliseconds(),
@@ -300,7 +300,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_nanoseconds(),
@@ -323,7 +323,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_microseconds(),
@@ -346,7 +346,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_seconds(),
@@ -369,7 +369,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_minutes(),
@@ -393,7 +393,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_hours(),
@@ -417,7 +417,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
     ///         .hocon()?["duration"].as_days(),
@@ -441,7 +441,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
     ///         .hocon()?["duration"].as_weeks(),
@@ -465,7 +465,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
     ///         .hocon()?["duration"].as_months(),
@@ -489,7 +489,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
     ///         .hocon()?["duration"].as_years(),
@@ -513,7 +513,7 @@ impl Hocon {
     ///
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hours  }"#)?
     ///         .hocon()?["duration"].as_duration(),

@@ -1,3 +1,4 @@
+use crate::Error;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::prelude::*;
@@ -117,7 +118,7 @@ impl HoconLoaderConfig {
     pub(crate) fn parse_str_to_internal(
         &self,
         s: FileRead,
-    ) -> Result<crate::internals::HoconInternal, crate::Error> {
+    ) -> Result<crate::internals::HoconInternal, Error> {
         let mut internal = crate::internals::HoconInternal::empty();
         if let Some(properties) = s.properties {
             internal = internal.add(
@@ -176,14 +177,14 @@ impl HoconLoaderConfig {
             .unwrap_or(true)
     }
 
-    pub(crate) fn read_file_to_string(path: PathBuf) -> Result<String, failure::Error> {
+    pub(crate) fn read_file_to_string(path: PathBuf) -> Result<String, Error> {
         let mut file = File::open(path.as_os_str())?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         Ok(contents)
     }
 
-    pub(crate) fn read_file(&self) -> Result<FileRead, failure::Error> {
+    pub(crate) fn read_file(&self) -> Result<FileRead, Error> {
         let full_path = self
             .file_meta
             .clone()
@@ -221,10 +222,7 @@ impl HoconLoaderConfig {
     }
 
     #[cfg(feature = "url-support")]
-    pub(crate) fn load_url(
-        &self,
-        url: &str,
-    ) -> Result<crate::internals::HoconInternal, failure::Error> {
+    pub(crate) fn load_url(&self, url: &str) -> Result<crate::internals::HoconInternal, Error> {
         if let Ok(parsed_url) = reqwest::Url::parse(url) {
             if parsed_url.scheme() == "file" {
                 if let Ok(path) = parsed_url.to_file_path() {
@@ -238,8 +236,7 @@ impl HoconLoaderConfig {
                 } else {
                     Err(crate::Error::Include {
                         path: String::from(url),
-                    }
-                    .into())
+                    })
                 }
             } else if self.external_url {
                 let body = reqwest::blocking::get(parsed_url)
@@ -255,14 +252,12 @@ impl HoconLoaderConfig {
             } else {
                 Err(crate::Error::Include {
                     path: String::from(url),
-                }
-                .into())
+                })
             }
         } else {
             Err(crate::Error::Include {
                 path: String::from(url),
-            }
-            .into())
+            })
         }
     }
 }
