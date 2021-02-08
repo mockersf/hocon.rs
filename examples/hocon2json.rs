@@ -2,7 +2,7 @@ use std::env;
 
 use serde_json::{Number, Value};
 
-use hocon::{Hocon, HoconLoader};
+use hocon::{Error, Hocon, HoconLoader};
 
 fn hocon_to_json(hocon: Hocon) -> Option<Value> {
     match hocon {
@@ -29,10 +29,14 @@ fn hocon_to_json(hocon: Hocon) -> Option<Value> {
     }
 }
 
-fn parse_to_json(path: &str) -> Result<String, failure::Error> {
+fn parse_to_json(path: &str) -> Result<String, Error> {
     let hocon = dbg!(HoconLoader::new().no_system().load_file(path)?.hocon())?;
     let json: Option<_> = hocon_to_json(hocon);
-    Ok(serde_json::to_string_pretty(&json)?)
+    Ok(
+        serde_json::to_string_pretty(&json).map_err(|e| Error::Deserialization {
+            message: e.to_string(),
+        })?,
+    )
 }
 
 fn main() {

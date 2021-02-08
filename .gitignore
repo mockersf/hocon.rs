@@ -5,3 +5,6 @@ Cargo.lock
 .DS_Store
 
 tmp
+
+/**/.idea
+*.iml

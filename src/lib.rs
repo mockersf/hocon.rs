@@ -27,6 +27,7 @@
 //!
 //! ```rust
 //! use serde::Deserialize;
+//! use hocon::Error;
 //!
 //! #[derive(Deserialize)]
 //! struct Configuration {
@@ -35,7 +36,7 @@
 //!     auto_connect: bool,
 //! }
 //!
-//! # fn main() -> Result<(), failure::Error> {
+//! # fn main() -> Result<(), Error> {
 //! let s = r#"{
 //!     host: 127.0.0.1
 //!     port: 80
@@ -52,9 +53,9 @@
 //! ## Reading from a string and getting value directly
 //!
 //! ```rust
-//! use hocon::HoconLoader;
+//! use hocon::{HoconLoader,Error};
 //!
-//! # fn main() -> Result<(), failure::Error> {
+//! # fn main() -> Result<(), Error> {
 //! let s = r#"{ a: 7 }"#;
 //!
 //! let doc = HoconLoader::new()
@@ -72,7 +73,7 @@
 //! ```rust
 //! use serde::Deserialize;
 //!
-//! use hocon::HoconLoader;
+//! use hocon::{HoconLoader,Error};
 //!
 //! #[derive(Deserialize)]
 //! struct Configuration {
@@ -81,7 +82,7 @@
 //!     auto_connect: bool,
 //! }
 //!
-//! # fn main() -> Result<(), failure::Error> {
+//! # fn main() -> Result<(), Error> {
 //! let s = r#"{
 //!     host: 127.0.0.1
 //!     port: 80
@@ -102,9 +103,9 @@
 //! [tests/data/basic.conf](https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf)
 //!
 //! ```rust
-//! use hocon::HoconLoader;
+//! use hocon::{HoconLoader,Error};
 //!
-//! # fn main() -> Result<(), failure::Error> {
+//! # fn main() -> Result<(), Error> {
 //! let doc = HoconLoader::new()
 //!     .load_file("tests/data/basic.conf")?
 //!     .hocon()?;
@@ -121,9 +122,9 @@
 //! [tests/data/basic.conf](https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf)
 //!
 //! ```rust
-//! use hocon::HoconLoader;
+//! use hocon::{HoconLoader,Error};
 //!
-//! # fn main() -> Result<(), failure::Error> {
+//! # fn main() -> Result<(), Error> {
 //! let s = r#"{
 //!     a: will be changed
 //!     unchanged: original value
@@ -160,7 +161,7 @@
 //! ```rust
 //! use serde::Deserialize;
 //!
-//! use hocon::HoconLoader;
+//! use hocon::{HoconLoader,Error};
 //!
 //! #[derive(Deserialize)]
 //! struct Configuration {
@@ -169,7 +170,7 @@
 //!     auto_connect: bool,
 //! }
 //!
-//! # fn main() -> Result<(), failure::Error> {
+//! # fn main() -> Result<(), Error> {
 //! let s = r#"{host: 127.0.0.1, port: 80, auto_connect: false}"#;
 //!
 //! # #[cfg(feature = "serde-support")]
@@ -208,8 +209,8 @@ pub use crate::serde::de;
 /// # Usage
 ///
 /// ```rust
-/// # use hocon::HoconLoader;
-/// # fn main() -> Result<(), failure::Error> {
+/// # use hocon::{HoconLoader,Error};
+/// # fn main() -> Result<(), Error> {
 /// # #[cfg(not(feature = "url-support"))]
 /// # let mut loader = HoconLoader::new()         // Creating new loader with default configuration
 /// #     .no_system();                           // Disable substituting from system environment
@@ -264,8 +265,8 @@ impl HoconLoader {
     ///
     /// with system:
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), Error> {
     /// # std::env::set_var("SHELL", "/bin/bash");
     /// # let example = r#"{system.shell: ${SHELL}}"#;
     /// assert_eq!(
@@ -279,7 +280,7 @@ impl HoconLoader {
     /// without system:
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// # let example = r#"{system.shell: ${SHELL}}"#;
     /// assert_eq!(
     ///     HoconLoader::new().no_system().load_str(example)?.hocon()?["system"]["shell"],
@@ -308,8 +309,8 @@ impl HoconLoader {
     ///
     /// with url include:
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_file("tests/data/include_url.conf")?.hocon()?["d"],
     ///     Hocon::Boolean(true)
@@ -321,7 +322,7 @@ impl HoconLoader {
     /// without url include:
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().no_url_include().load_file("tests/data/include_url.conf")?.hocon()?["d"],
     ///     Hocon::BadValue(Error::MissingKey)
@@ -359,7 +360,7 @@ impl HoconLoader {
     /// in permissive mode:
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// # let example = r#"{ a = ${b} }"#;
     /// assert_eq!(
     ///     HoconLoader::new().load_str(example)?.hocon()?["a"],
@@ -372,7 +373,7 @@ impl HoconLoader {
     /// in strict mode:
     /// ```rust
     /// # use hocon::{Hocon, HoconLoader, Error};
-    /// # fn main() -> Result<(), failure::Error> {
+    /// # fn main() -> Result<(), Error> {
     /// # let example = r#"{ a = ${b} }"#;
     /// assert_eq!(
     ///     HoconLoader::new().strict().load_str(example)?.hocon(),
@@ -452,11 +453,14 @@ impl HoconLoader {
             file_path = current_path;
         }
         let conf = self.config.with_file(file_path);
-        let contents = conf.read_file().map_err(|err| Error::File {
-            path: String::from(
-                err.name()
-                    .unwrap_or_else(|| path.as_ref().to_str().unwrap_or("invalid path")),
-            ),
+        let contents = conf.read_file().map_err(|err| {
+            let path = match err {
+                Error::File { path } => path,
+                Error::Include { path } => path,
+                Error::IO { message } => message,
+                _ => "unmatched error".to_string(),
+            };
+            Error::File { path }
         })?;
         Self {
             config: conf,
