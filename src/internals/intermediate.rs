@@ -33,12 +33,8 @@ impl Child {
                     .get(0)
                     .map(|child| {
                         *std::cell::Ref::map(child.value.borrow(), |v| {
-                            if let Node::Leaf(l) = v {
-                                if let HoconValue::Included { .. } = l {
-                                    &true
-                                } else {
-                                    &false
-                                }
+                            if let Node::Leaf(HoconValue::Included { .. }) = v {
+                                &true
                             } else {
                                 &false
                             }
