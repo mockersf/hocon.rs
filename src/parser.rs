@@ -119,7 +119,7 @@ fn find_3_chr(input: &[u8], chr: u8) -> Option<usize> {
     } else {
         let max = input.len() - substr_len;
         let mut offset = 0;
-        let mut haystack = &input[..];
+        let mut haystack = input;
 
         while let Some(mut position) = memchr::memchr(chr, haystack) {
             offset += position;

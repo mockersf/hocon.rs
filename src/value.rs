@@ -549,11 +549,9 @@ impl Hocon {
     where
         T: ::serde::Deserialize<'de>,
     {
-        Ok(
-            crate::serde::from_hocon(self).map_err(|err| crate::Error::Deserialization {
-                message: err.message,
-            })?,
-        )
+        crate::serde::from_hocon(self).map_err(|err| crate::Error::Deserialization {
+            message: err.message,
+        })
     }
 }
 
