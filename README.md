@@ -1,4 +1,4 @@
-# HOCON.rs [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://travis-ci.org/mockersf/hocon.rs.svg?branch=master)](https://travis-ci.org/mockersf/hocon.rs) [![Coverage Status](https://coveralls.io/repos/github/mockersf/hocon.rs/badge.svg?branch=master)](https://coveralls.io/github/mockersf/hocon.rs?branch=master) [![Realease Doc](https://docs.rs/hocon/badge.svg)](https://docs.rs/hocon) [![Crate](https://img.shields.io/crates/v/hocon.svg)](https://crates.io/crates/hocon)
+# HOCON.rs [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Realease Doc](https://docs.rs/hocon/badge.svg)](https://docs.rs/hocon) [![Crate](https://img.shields.io/crates/v/hocon.svg)](https://crates.io/crates/hocon)
 
 The API docs for the master branch are published [here](https://mockersf.github.io/hocon.rs/).
 
