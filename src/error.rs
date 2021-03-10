@@ -5,7 +5,7 @@ use thiserror::Error;
 pub enum Error {
     /// Captures IO-Errors. Usually we would use a transparent error but io::Error is not clonable
     #[error("Error during IO")]
-    IO {
+    Io {
         /// the description of the original IOError
         message: String,
     },
@@ -57,7 +57,7 @@ pub enum Error {
 /// this is only needed because this crate heavily relies on Clone and io:Error doesnt implement Clone
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Error::IO {
+        Error::Io {
             message: e.to_string(),
         }
     }
