@@ -104,3 +104,37 @@ fn deserialize_multilevel_struct_missing_field() {
         r#"Err(Deserialization { message: "i.ii: missing field `a`" })"#
     );
 }
+
+#[test]
+fn deserialize_struct_duration_wrapper() {
+    use hocon::de::wrappers::Serde;
+    use std::time::Duration;
+
+    #[derive(Deserialize, Debug)]
+    struct Test {
+        a: Serde<Duration>,
+    }
+
+    let s = r#"{"a":"1 second"}"#;
+
+    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+
+    assert_eq!(*doc.a, std::time::Duration::from_secs(1));
+}
+
+#[test]
+fn deserialize_struct_duration_with() {
+    use hocon::de::wrappers::Serde;
+    use std::time::Duration;
+    #[derive(Deserialize, Debug)]
+    struct Test {
+        #[serde(deserialize_with = "Serde::<Duration>::with")]
+        a: std::time::Duration,
+    }
+
+    let s = r#"{"a":"1 second"}"#;
+
+    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+
+    assert_eq!(doc.a, std::time::Duration::from_secs(1));
+}

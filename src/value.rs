@@ -273,21 +273,25 @@ impl Hocon {
         match *self {
             Hocon::Integer(ref i) => Some(*i as f64),
             Hocon::Real(ref f) => Some(*f),
-            Hocon::String(ref s) => units!(
-                match unit_format::value_and_unit(s).map(|(value, unit)| (value, unit.trim())),
-                "ns", "nano", "nanos", "nanosecond", "nanoseconds"          => 10.0f64.powf(-6.0),
-                "us", "micro", "micros", "microsecond", "microseconds"      => 10.0f64.powf(-3.0),
-                "", "ms", "milli", "millis", "millisecond", "milliseconds"  => 1.0,
-                "s", "second", "seconds"                                    => 1_000.0,
-                "m", "minute", "minutes"                                    => 1_000.0 * 60.0,
-                "h", "hour", "hours"                                        => 1_000.0 * 60.0 * 60.0,
-                "d", "day", "days"                                          => 1_000.0 * 60.0 * 60.0 * 24.0,
-                "w", "week", "weeks"                                        => 1_000.0 * 60.0 * 60.0 * 24.0 * 7.0,
-                "mo", "month", "months"                                     => 1_000.0 * 60.0 * 60.0 * 24.0 * 30.0,
-                "y", "year", "years"                                        => 1_000.0 * 60.0 * 60.0 * 24.0 * 365.0
-            ),
+            Hocon::String(ref s) => Self::str_as_milliseconds(s),
             _ => None,
         }
+    }
+
+    pub(crate) fn str_as_milliseconds(s: &str) -> Option<f64> {
+        units!(
+            match unit_format::value_and_unit(s).map(|(value, unit)| (value, unit.trim())),
+            "ns", "nano", "nanos", "nanosecond", "nanoseconds"          => 10.0f64.powf(-6.0),
+            "us", "micro", "micros", "microsecond", "microseconds"      => 10.0f64.powf(-3.0),
+            "", "ms", "milli", "millis", "millisecond", "milliseconds"  => 1.0,
+            "s", "second", "seconds"                                    => 1_000.0,
+            "m", "minute", "minutes"                                    => 1_000.0 * 60.0,
+            "h", "hour", "hours"                                        => 1_000.0 * 60.0 * 60.0,
+            "d", "day", "days"                                          => 1_000.0 * 60.0 * 60.0 * 24.0,
+            "w", "week", "weeks"                                        => 1_000.0 * 60.0 * 60.0 * 24.0 * 7.0,
+            "mo", "month", "months"                                     => 1_000.0 * 60.0 * 60.0 * 24.0 * 30.0,
+            "y", "year", "years"                                        => 1_000.0 * 60.0 * 60.0 * 24.0 * 365.0
+        )
     }
 
     /// Try to return a value as a duration in nanoseconds according to

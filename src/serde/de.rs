@@ -3,6 +3,8 @@
 use super::error::{Error, Result};
 use crate::Hocon;
 
+pub use super::wrappers;
+
 macro_rules! impl_deserialize_n {
     ($method:ident, $visit:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value>
