@@ -457,7 +457,7 @@ impl HoconLoader {
             let path = match err {
                 Error::File { path } => path,
                 Error::Include { path } => path,
-                Error::IO { message } => message,
+                Error::Io { message } => message,
                 _ => "unmatched error".to_string(),
             };
             Error::File { path }
