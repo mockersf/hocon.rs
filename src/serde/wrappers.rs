@@ -116,6 +116,6 @@ impl Serde<Duration> {
     where
         D: Deserializer<'de>,
     {
-        Ok(deserializer.deserialize_str(StringDurationVisitor)?)
+        deserializer.deserialize_str(StringDurationVisitor)
     }
 }
