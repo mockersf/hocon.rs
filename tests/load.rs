@@ -17,3 +17,10 @@ fn file_load(file_name: &str) {
 
     assert!(dbg!(doc).is_ok());
 }
+
+#[test]
+fn missing_file() {
+    let doc = hocon::HoconLoader::new().load_file("some/file.conf");
+
+    assert!(dbg!(doc).is_err());
+}
