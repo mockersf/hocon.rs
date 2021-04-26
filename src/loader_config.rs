@@ -129,7 +129,7 @@ impl HoconLoaderConfig {
         };
         if let Some(json) = s.json {
             internal = internal.add(
-                crate::parser::root(format!("{}\n\0", json).as_bytes(), self)
+                crate::parser::root(format!("{}\n\0", json.replace('\r', "\n")).as_bytes(), self)
                     .map_err(|_| crate::Error::Parse)
                     .and_then(|(remaining, parsed)| {
                         if Self::remaining_only_whitespace(remaining) {
@@ -146,19 +146,22 @@ impl HoconLoaderConfig {
         };
         if let Some(hocon) = s.hocon {
             internal = internal.add(
-                crate::parser::root(format!("{}\n\0", hocon).as_bytes(), self)
-                    .map_err(|_| crate::Error::Parse)
-                    .and_then(|(remaining, parsed)| {
-                        if Self::remaining_only_whitespace(remaining) {
-                            parsed
-                        } else if self.strict {
-                            Err(crate::Error::Deserialization {
-                                message: String::from("file could not be parsed completely"),
-                            })
-                        } else {
-                            parsed
-                        }
-                    })?,
+                crate::parser::root(
+                    format!("{}\n\0", hocon.replace('\r', "\n")).as_bytes(),
+                    self,
+                )
+                .map_err(|_| crate::Error::Parse)
+                .and_then(|(remaining, parsed)| {
+                    if Self::remaining_only_whitespace(remaining) {
+                        parsed
+                    } else if self.strict {
+                        Err(crate::Error::Deserialization {
+                            message: String::from("file could not be parsed completely"),
+                        })
+                    } else {
+                        parsed
+                    }
+                })?,
             );
         };
 

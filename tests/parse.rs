@@ -29,13 +29,32 @@ fn parse_string_escaped() {
 
 #[test]
 fn parse_string_strict_with_windows_newline() {
-    let s = "{\"a\":\r\n\"dndjf\"\r\n}\r\n";
+    let s = "{\"a\":\r\n\"dndjf\"\r\n\r\n\"b\":\"other\"}\r\n";
     let doc: Hocon = dbg!(HoconLoader::new().strict().load_str(dbg!(s)))
         .expect("during test")
         .hocon()
         .expect("during test");
 
     assert_eq!(doc["a"].as_string().expect("during test"), "dndjf");
+    assert_eq!(doc["b"].as_string().expect("during test"), "other");
+
+    // let s = "title = \"test\"\r\n\r\nchild1 {\r\nhome = \"./dir1\"\r\n}\r\n\r\nchild2 {\r\nhome = \"./dir2\"\r\n}";
+    let s =
+        "title = \"test\"\r\n\r\nchild1 {\r\nhome = \"./dir1\"\r\n}\r\n\nchild2 {\nhome = \"./dir2\"\n}";
+    let doc: Hocon = dbg!(HoconLoader::new().strict().load_str(dbg!(s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+
+    assert_eq!(doc["title"].as_string().expect("during test"), "test");
+    assert_eq!(
+        doc["child1"]["home"].as_string().expect("during test"),
+        "./dir1"
+    );
+    assert_eq!(
+        doc["child2"]["home"].as_string().expect("during test"),
+        "./dir2"
+    );
 }
 
 #[test]
