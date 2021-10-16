@@ -248,7 +248,7 @@ impl HoconValue {
                 let substituted = crate::helper::extract_result(
                     values
                         .into_iter()
-                        .map(|v| v.substitute(config, &current_tree, at_path))
+                        .map(|v| v.substitute(config, current_tree, at_path))
                         .map(|v| match v {
                             Ok(node) => Ok(node),
                             Err(err) => Ok(Node::Leaf(bad_value_or_err!(config, err))),
@@ -345,12 +345,12 @@ impl HoconValue {
                                 })
                                 .collect(),
                         )
-                        .substitute(config, current_tree, &at_path);
+                        .substitute(config, current_tree, at_path);
                     }
                     _ => (),
                 }
 
-                match value.substitute(config, current_tree, &at_path) {
+                match value.substitute(config, current_tree, at_path) {
                     Ok(Node::Leaf(value_found)) => {
                         // remember leaf was found inside an include
                         Ok(Node::Leaf(HoconValue::Included {
