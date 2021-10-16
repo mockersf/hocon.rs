@@ -79,7 +79,7 @@ impl Node {
             } => children
                 .first()
                 .map(
-                    |ref first| match (&first.key, &first.is_array_leaf_included()) {
+                    |first| match (&first.key, &first.is_array_leaf_included()) {
                         (HoconValue::Null(_), true) => Ok(Hocon::Array(
                             crate::helper::extract_result(
                                 children
@@ -159,7 +159,7 @@ impl Node {
         path: Vec<HoconValue>,
     ) -> Result<Node, crate::Error> {
         match (self, &path) {
-            (Node::Leaf(_), ref path) if path.is_empty() => Ok(self.clone()),
+            (Node::Leaf(_), path) if path.is_empty() => Ok(self.clone()),
             (Node::Node { children, .. }, _) => {
                 let mut iter = path.clone().into_iter();
                 let first = iter.next();
