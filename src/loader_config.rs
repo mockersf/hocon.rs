@@ -41,7 +41,6 @@ impl FileRead {
 #[derive(Debug, Clone)]
 pub(crate) struct ConfFileMeta {
     path: PathBuf,
-    file_name: String,
     full_path: PathBuf,
     file_type: FileType,
 }
@@ -57,7 +56,6 @@ impl ConfFileMeta {
 
         Self {
             path: parent_path,
-            file_name: String::from(file),
             full_path: path.clone(),
             file_type: match Path::new(file).extension().and_then(OsStr::to_str) {
                 Some("properties") => FileType::Properties,

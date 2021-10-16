@@ -100,22 +100,14 @@ impl HoconInternal {
                 original_path,
                 item_id,
                 ..
-            } => {
-                let root = k
-                    .iter()
-                    .take(k.len() - original_path.len())
-                    .cloned()
-                    .collect();
-                (
-                    k,
-                    HoconValue::ToConcatToArray {
-                        value,
-                        array_root: Some(root),
-                        original_path,
-                        item_id,
-                    },
-                )
-            }
+            } => (
+                k,
+                HoconValue::ToConcatToArray {
+                    value,
+                    original_path,
+                    item_id,
+                },
+            ),
             _ => (k, v),
         }
     }

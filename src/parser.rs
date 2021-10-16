@@ -279,7 +279,6 @@ named_args!(
                                     k.clone(),
                                     HoconValue::ToConcatToArray {
                                         value: Box::new(v),
-                                        array_root: None,
                                         original_path: k,
                                         item_id: item_id.clone(),
                                     }
@@ -306,7 +305,6 @@ named_args!(
                                     k.clone(),
                                     HoconValue::ToConcatToArray {
                                         value: Box::new(v),
-                                        array_root: None,
                                         original_path: k,
                                         item_id: item_id.clone(),
                                     }
@@ -388,9 +386,9 @@ named!(
     alt!(
         multiline_string =>  { |s| HoconValue::String(String::from(s))         } |
         string  =>           { |s| HoconValue::String(String::from(s))         } |
-        integer =>           { |i| HoconValue::Integer(i)                      } |
-        float   =>           { |f| HoconValue::Real(f)                         } |
-        boolean =>           { |b| HoconValue::Boolean(b)                      } |
+        integer =>           { HoconValue::Integer                      } |
+        float   =>           { HoconValue::Real                         } |
+        boolean =>           { HoconValue::Boolean                      } |
         optional_path_substitution =>
             { |p| HoconValue::PathSubstitution{target: Box::new(p), optional: true, original: None}  } |
         path_substitution =>
@@ -425,7 +423,7 @@ named!(
             >> ws!(many0!(newline))
             >> included:
                 sp!(alt!(
-                    map!(call!(string), |v| (Include::File(v)))
+                    map!(call!(string), Include::File)
                         | do_parse!(
                             tag!("file(")
                                 >> file_name: string
