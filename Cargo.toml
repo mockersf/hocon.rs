@@ -25,6 +25,7 @@ uuid = { version = "0.8", features = [ "v4" ] }
 serde_path_to_error = "0.1"
 aho-corasick = "0.7.18"
 lazy_static = "1.4.0"
+linked-hash-map = "0.5.4"
 
 [dev-dependencies]
 test-generator = "0.3"

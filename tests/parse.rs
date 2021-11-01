@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
 use hocon::{Error, Hocon, HoconLoader};
+use linked_hash_map::LinkedHashMap;
 
 #[test]
 fn parse_string() {
@@ -473,7 +472,7 @@ fn parse_empty_object() {
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["a"][0], Hocon::Hash(HashMap::new()));
+    assert_eq!(doc["a"][0], Hocon::Hash(LinkedHashMap::new()));
     assert_eq!(doc["b"], Hocon::Array(vec![]));
 }
 
