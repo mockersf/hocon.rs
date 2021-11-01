@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::{Hocon, HoconLoaderConfig};
@@ -7,6 +6,7 @@ use crate::{Hocon, HoconLoaderConfig};
 use super::value::HoconValue;
 
 use crate::internals::value;
+use linked_hash_map::LinkedHashMap;
 
 #[derive(Clone, Debug)]
 pub(crate) enum KeyType {
@@ -148,7 +148,7 @@ impl Node {
                 )
                 .unwrap_or_else(|| match key_hint {
                     Some(KeyType::Int) => Ok(Hocon::Array(vec![])),
-                    Some(KeyType::String) | None => Ok(Hocon::Hash(HashMap::new())),
+                    Some(KeyType::String) | None => Ok(Hocon::Hash(LinkedHashMap::new())),
                 }),
         }
     }

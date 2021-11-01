@@ -758,6 +758,7 @@ where
 #[allow(dead_code)]
 mod tests {
     use crate::Hocon;
+    use linked_hash_map::LinkedHashMap;
     use serde::Deserialize;
     use std::collections::HashMap;
 
@@ -778,24 +779,24 @@ mod tests {
 
     #[test]
     fn can_deserialize_struct() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("int"), Hocon::Integer(56));
         hm.insert(String::from("float"), Hocon::Real(543.12));
         hm.insert(String::from("boolean"), Hocon::Boolean(false));
         hm.insert(String::from("string"), Hocon::String(String::from("test")));
         let mut vec_sub = vec![];
-        let mut subhm = HashMap::new();
+        let mut subhm = LinkedHashMap::new();
         subhm.insert(String::from("int"), Hocon::Integer(5));
         subhm.insert(String::from("float"), Hocon::Integer(6));
         subhm.insert(String::from("extra"), Hocon::Integer(10));
         let subdoc = Hocon::Hash(subhm);
         vec_sub.push(subdoc);
-        let mut subhm = HashMap::new();
+        let mut subhm = LinkedHashMap::new();
         subhm.insert(String::from("int"), Hocon::Integer(5));
         subhm.insert(String::from("float"), Hocon::Integer(6));
         let subdoc = Hocon::Hash(subhm);
         vec_sub.push(subdoc);
-        let mut subhm = HashMap::new();
+        let mut subhm = LinkedHashMap::new();
         subhm.insert(String::from("int"), Hocon::Integer(5));
         subhm.insert(String::from("float"), Hocon::Integer(6));
         subhm.insert(String::from("extra"), Hocon::Null);
@@ -810,7 +811,7 @@ mod tests {
 
     #[test]
     fn will_fail_on_missing_field() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("int"), Hocon::Integer(5));
         let doc = Hocon::Hash(hm);
 
@@ -820,7 +821,7 @@ mod tests {
 
     #[test]
     fn will_not_fail_on_extra_field() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("int"), Hocon::Integer(5));
         hm.insert(String::from("float"), Hocon::Integer(6));
         hm.insert(String::from("extra"), Hocon::Integer(10));
@@ -832,14 +833,14 @@ mod tests {
 
     #[test]
     fn will_fail_on_wrong_type() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("int"), Hocon::Integer(5));
         hm.insert(String::from("float"), Hocon::String(String::from("wrong")));
         let doc = Hocon::Hash(hm);
         let res: super::Result<Simple> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
 
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("int"), Hocon::Integer(56));
         hm.insert(String::from("float"), Hocon::Real(543.12));
         hm.insert(String::from("boolean"), Hocon::Boolean(false));
@@ -849,7 +850,7 @@ mod tests {
         let res: super::Result<WithSubStruct> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_err());
 
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("int"), Hocon::Integer(56));
         hm.insert(String::from("float"), Hocon::Real(543.12));
         hm.insert(String::from("boolean"), Hocon::Integer(1));
@@ -867,10 +868,10 @@ mod tests {
             a: Vec<i32>,
         }
 
-        let mut array = HashMap::new();
+        let mut array = LinkedHashMap::new();
         array.insert(String::from("0"), Hocon::Integer(5));
         array.insert(String::from("2"), Hocon::Integer(7));
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("a"), Hocon::Hash(array));
         let doc = Hocon::Hash(hm);
 
@@ -888,7 +889,7 @@ mod tests {
         }
 
         // let s: MyStruct = HoconLoader::new().load_str("").unwrap().resolve().unwrap();
-        let doc = Hocon::Hash(HashMap::new());
+        let doc = Hocon::Hash(LinkedHashMap::new());
 
         let res: super::Result<MyStructWithDefaultField> = dbg!(super::from_hocon(dbg!(doc)));
         assert!(res.is_ok());
@@ -905,7 +906,7 @@ mod tests {
             item: UnitStruct,
         }
 
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("item"), Hocon::Null);
         let doc = Hocon::Hash(hm);
 
@@ -921,7 +922,7 @@ mod tests {
             item: (u64, String),
         }
 
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         let mut vec_sub = vec![];
         vec_sub.push(Hocon::Integer(0));
         vec_sub.push(Hocon::String(String::from("Hello")));
@@ -943,7 +944,7 @@ mod tests {
             item: TupleStruct,
         }
 
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         let mut vec_sub = vec![];
         vec_sub.push(Hocon::Integer(0));
         vec_sub.push(Hocon::String(String::from("Hello")));
@@ -965,8 +966,8 @@ mod tests {
             item: HashMap<String, u64>,
         }
 
-        let mut hm = HashMap::new();
-        let mut hm_sub = HashMap::new();
+        let mut hm = LinkedHashMap::new();
+        let mut hm_sub = LinkedHashMap::new();
         hm_sub.insert(String::from("Hello"), Hocon::Integer(7));
         hm.insert(String::from("item"), Hocon::Hash(hm_sub));
         let doc = Hocon::Hash(hm);
@@ -984,7 +985,7 @@ mod tests {
             B,
         }
 
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("A"), Hocon::Integer(1));
         hm.insert(String::from("B"), Hocon::Integer(2));
         let doc = Hocon::Hash(hm);
@@ -998,8 +999,8 @@ mod tests {
             s: u8,
         }
 
-        let mut hm = HashMap::new();
-        let mut hm_sub = HashMap::new();
+        let mut hm = LinkedHashMap::new();
+        let mut hm_sub = LinkedHashMap::new();
         hm_sub.insert(String::from("s"), Hocon::Integer(7));
         hm.insert(String::from("A"), Hocon::Hash(hm_sub));
         let doc = Hocon::Hash(hm);
@@ -1023,7 +1024,7 @@ mod tests {
 
     #[test]
     fn deserialize_unit_enum() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(
             String::from("item"),
             Hocon::String(String::from("UnitVariant")),
@@ -1037,11 +1038,11 @@ mod tests {
 
     #[test]
     fn deserialize_tuple_enum() {
-        let mut hm = HashMap::new();
-        let mut sub_hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
+        let mut sub_hm = LinkedHashMap::new();
         sub_hm.insert(String::from("u"), Hocon::Integer(12));
         sub_hm.insert(String::from("b"), Hocon::Boolean(true));
-        let mut variant_map = HashMap::new();
+        let mut variant_map = LinkedHashMap::new();
         variant_map.insert(String::from("StructVariant"), Hocon::Hash(sub_hm));
         hm.insert(String::from("item"), Hocon::Hash(variant_map));
         let doc = Hocon::Hash(hm);
@@ -1056,11 +1057,11 @@ mod tests {
 
     #[test]
     fn deserialize_struct_enum() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         let mut sub_vec = vec![];
         sub_vec.push(Hocon::Integer(7));
         sub_vec.push(Hocon::Boolean(false));
-        let mut variant_map = HashMap::new();
+        let mut variant_map = LinkedHashMap::new();
         variant_map.insert(String::from("TupleVariant"), Hocon::Array(sub_vec));
         hm.insert(String::from("item"), Hocon::Hash(variant_map));
         let doc = Hocon::Hash(hm);
@@ -1086,8 +1087,8 @@ mod tests {
             Asap { num_retries: u32 },
         }
 
-        let mut hm = HashMap::new();
-        let mut sub_hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
+        let mut sub_hm = LinkedHashMap::new();
         // sub_hm.insert(String::from("type"), Hocon::String(String::from("NoRetry")));
         sub_hm.insert(String::from("type"), Hocon::String(String::from("Asap")));
         sub_hm.insert(String::from("num_retries"), Hocon::Integer(7));

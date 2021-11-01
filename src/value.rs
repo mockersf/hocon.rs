@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use linked_hash_map::LinkedHashMap;
 use std::ops::Index;
 
 /// An HOCON document
@@ -76,7 +76,7 @@ pub enum Hocon {
     /// An array of `Hocon` values
     Array(Vec<Hocon>),
     /// An HashMap of `Hocon` values with keys
-    Hash(HashMap<String, Hocon>),
+    Hash(LinkedHashMap<String, Hocon>),
     /// A null value
     Null,
     /// A `BadValue`, marking an error in parsing or a missing value
@@ -663,7 +663,7 @@ mod tests {
 
     #[test]
     fn access_on_hash() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("a"), Hocon::Integer(5));
         hm.insert(String::from("b"), Hocon::Integer(6));
         let val = Hocon::Hash(hm);
@@ -695,7 +695,7 @@ mod tests {
 
     #[test]
     fn access_hash_as_array() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("0"), Hocon::Integer(5));
         hm.insert(String::from("a"), Hocon::Integer(6));
         hm.insert(String::from("2"), Hocon::Integer(7));
@@ -812,7 +812,7 @@ mod tests {
 
     #[test]
     fn access_on_duration() {
-        let mut hm = HashMap::new();
+        let mut hm = LinkedHashMap::new();
         hm.insert(String::from("ns"), Hocon::String(String::from("1ns")));
         hm.insert(String::from("us"), Hocon::String(String::from("1us")));
         hm.insert(String::from("ms"), Hocon::String(String::from("1ms")));
