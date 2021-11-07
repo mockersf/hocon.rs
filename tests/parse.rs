@@ -18,13 +18,44 @@ fn parse_string() {
 
 #[test]
 fn parse_string_escaped() {
-    let s = r#"{"a":"dn\"d\"jf"}"#;
+    let s = r#"{
+        "a":"dn\"d\"jf",
+        "b": "\ud83d\ude03",
+        "c": "\n",
+        "d": "\u0061",
+        "invalid1":"\uD800",
+        "invalid2":"\uD800\uD800",
+        "invalid3":"\uD800\uD800\uD800",
+        "invalid4":"\u",
+        "invalid5":"\uZZZZ"
+    }"#;
     let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
         .expect("during test")
         .hocon()
         .expect("during test");
 
-    assert_eq!(doc["a"].as_string().expect("during test"), "dn\\\"d\\\"jf");
+    assert_eq!(doc["a"].as_string().expect("during test"), r#"dn"d"jf"#);
+    assert_eq!(doc["b"].as_string().expect("during test"), "😃");
+    assert_eq!(doc["c"].as_string().expect("during test"), "\n");
+    assert_eq!(doc["d"].as_string().expect("during test"), "a");
+
+    // Result is not defined for strings containing invalid codepoints. Parser should not error or panic though.
+    assert!(doc["invalid1"].as_string().is_some());
+    assert!(doc["invalid2"].as_string().is_some());
+    assert!(doc["invalid3"].as_string().is_some());
+    assert!(doc["invalid4"].as_string().is_some());
+    assert!(doc["invalid5"].as_string().is_some());
+}
+
+#[test]
+fn parse_string_escaped_key() {
+    let s = r#"{"dn\"d\"jf":"a"}"#;
+    let doc: Hocon = dbg!(HoconLoader::new().load_str(dbg!(s)))
+        .expect("during test")
+        .hocon()
+        .expect("during test");
+
+    assert_eq!(doc[r#"dn"d"jf"#].as_string().expect("during test"), "a");
 }
 
 #[test]

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -9,11 +10,11 @@ use super::intermediate::{Child, HoconIntermediate, Node};
 use super::value::HoconValue;
 
 pub(crate) enum Include<'a> {
-    File(&'a str),
-    Url(&'a str),
+    File(Cow<'a, str>),
+    Url(Cow<'a, str>),
 }
 impl<'a> Include<'a> {
-    fn included(&self) -> &'a str {
+    fn included(&self) -> &Cow<'a, str> {
         match self {
             Include::File(s) => s,
             Include::Url(s) => s,
@@ -150,36 +151,36 @@ impl HoconInternal {
         if config.include_depth > config.max_include_depth {
             Ok(Self {
                 internal: vec![(
-                    vec![HoconValue::String(String::from(included.included()))],
+                    vec![HoconValue::String(included.included().to_string())],
                     bad_value_or_err!(config, crate::Error::TooManyIncludes),
                 )],
             })
         } else if config.file_meta.is_none() {
             Ok(Self {
                 internal: vec![(
-                    vec![HoconValue::String(String::from(included.included()))],
+                    vec![HoconValue::String(included.included().to_string())],
                     bad_value_or_err!(config, crate::Error::IncludeNotAllowedFromStr),
                 )],
             })
         } else {
             let included_parsed = match included {
-                Include::File(path) => {
+                Include::File(ref path) => {
                     let include_config = config
                         .included_from()
-                        .with_file(std::path::Path::new(path).to_path_buf());
+                        .with_file(std::path::Path::new(path.as_ref()).to_path_buf());
                     include_config
                         .read_file()
                         .map_err(|_| crate::error::Error::Include {
-                            path: String::from(path),
+                            path: path.to_string(),
                         })
                         .and_then(|s| include_config.parse_str_to_internal(s))
                 }
                 #[cfg(feature = "url-support")]
-                Include::Url(url) => {
+                Include::Url(ref url) => {
                     config
                         .load_url(url)
                         .map_err(|_| crate::error::Error::Include {
-                            path: String::from(url),
+                            path: url.to_string(),
                         })
                 }
                 #[cfg(not(feature = "url-support"))]
@@ -205,7 +206,7 @@ impl HoconInternal {
                 }),
                 Err(error) => Ok(Self {
                     internal: vec![(
-                        vec![HoconValue::String(String::from(included.included()))],
+                        vec![HoconValue::String(included.included().to_string())],
                         bad_value_or_err!(config, error),
                     )],
                 }),
@@ -480,7 +481,7 @@ mod tests {
     #[test]
     fn max_depth_of_include() {
         let val = dbg!(HoconInternal::from_include(
-            Include::File("file.conf"),
+            Include::File(Cow::from("file.conf")),
             &HoconLoaderConfig {
                 include_depth: 15,
                 file_meta: Some(crate::ConfFileMeta::from_path(
@@ -505,7 +506,7 @@ mod tests {
     #[test]
     fn missing_file_included() {
         let val = dbg!(HoconInternal::from_include(
-            Include::File("file.conf"),
+            Include::File(Cow::from("file.conf")),
             &HoconLoaderConfig {
                 include_depth: 5,
                 file_meta: Some(crate::ConfFileMeta::from_path(
