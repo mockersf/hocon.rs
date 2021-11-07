@@ -1,8 +1,9 @@
 use nom::*;
 
+use std::borrow::Cow;
 use std::str;
 
-use crate::internals::{Hash, HoconInternal, HoconValue, Include};
+use crate::internals::{unescape, Hash, HoconInternal, HoconValue, Include};
 use crate::HoconLoaderConfig;
 
 named!(
@@ -76,12 +77,15 @@ named!(null, tag!("null"));
 
 //FIXME: verify how json strings are formatted
 named!(
-    string<&str>,
+    string<&[u8], Cow<str>>,
     delimited!(
         char!('"'),
-        map_res!(
-            escaped!(none_of!("\\\"\n"), '\\', one_of!("\"n\\")),
-            str::from_utf8
+        map!(
+            map_res!(
+                escaped!(none_of!("\\\"\n"), '\\', one_of!(r#""\/bfnrtu"#)),
+                str::from_utf8
+            ),
+            unescape
         ),
         char!('"')
     )
@@ -261,18 +265,18 @@ named_args!(
             >> pair: sp!(alt!(
                 call!(include) => { |path| Ok(HoconInternal::from_include(path, config)?.internal) } |
                 separated_pair!(ws!(string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))
-                    => { |(s, h): (&str, Result<HoconInternal, _>)|
+                    => { |(s, h): (Cow<str>, Result<HoconInternal, _>)|
                         Ok(HoconInternal::from_object(h?.internal)
-                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
+                            .add_to_path(vec![HoconValue::String(s.to_string())]).internal)
                     } |
                 pair!(ws!(string), call!(hashes, config))
-                    => { |(s, h): (&str, Result<Hash, _>)|
+                    => { |(s, h): (Cow<str>, Result<Hash, _>)|
                         Ok(HoconInternal::from_object(h?)
-                            .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
+                            .add_to_path(vec![HoconValue::String(s.to_string())]).internal)
                     } |
                 // to concat to an array
                 separated_pair!(ws!(string), ws!(tag!("+=")), call!(wrapper, config))
-                    => { |(s, h): (&str, Result<HoconInternal, _>)| {
+                    => { |(s, h): (Cow<str>, Result<HoconInternal, _>)| {
                             let item_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
                             Ok(HoconInternal::from_object(h?.internal)
                                 .transform(|k, v| (
@@ -283,7 +287,7 @@ named_args!(
                                         item_id: item_id.clone(),
                                     }
                                 ))
-                                .add_to_path(vec![HoconValue::String(String::from(s))]).internal)
+                                .add_to_path(vec![HoconValue::String(s.to_string())]).internal)
                         }
                     } |
                 separated_pair!(ws!(unquoted_string), ws!(alt!(char!(':') | char!('='))), call!(wrapper, config))

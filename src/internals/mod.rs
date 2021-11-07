@@ -23,6 +23,9 @@ pub(crate) mod macros {
 
 mod intermediate;
 mod internal;
+mod str_unescape;
 mod value;
+
 pub(crate) use internal::*;
+pub(crate) use str_unescape::*;
 pub(crate) use value::*;
