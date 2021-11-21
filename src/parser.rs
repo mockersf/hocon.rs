@@ -477,13 +477,28 @@ pub(crate) fn root<'a, E: 'a + ParseError<&'a str>>(
 mod tests {
     use crate::{internals::HoconValue, loader_config::HoconLoaderConfig};
 
-    use super::{key_value, maybe_comments};
+    use super::*;
 
     #[test]
     fn can_parse_comments() {
-        assert_eq!(maybe_comments::<()>("input").unwrap().0, "input");
-        assert_eq!(maybe_comments::<()>("//input\n").unwrap().0, "");
-        assert_eq!(maybe_comments::<()>("  //input\n").unwrap().0, "");
+        assert_eq!(
+            maybe_comments::<nom::error::VerboseError<&str>>("input")
+                .unwrap()
+                .0,
+            "input"
+        );
+        assert_eq!(
+            maybe_comments::<nom::error::VerboseError<&str>>("//input\n")
+                .unwrap()
+                .0,
+            ""
+        );
+        assert_eq!(
+            maybe_comments::<nom::error::VerboseError<&str>>("  //input\n")
+                .unwrap()
+                .0,
+            ""
+        );
         assert_eq!(
             maybe_comments::<()>("//input\n//input2\nremaining")
                 .unwrap()
@@ -512,6 +527,35 @@ mod tests {
                 vec![HoconValue::UnquotedString("int".to_string())],
                 HoconValue::Integer(56)
             )]
+        );
+    }
+
+    #[test]
+    fn can_parse_hash() {
+        let config = HoconLoaderConfig::default();
+        assert_eq!(
+            hash::<nom::error::VerboseError<&str>>(r#"{"int":56}"#, &config)
+                .unwrap()
+                .1,
+            vec![(
+                vec![HoconValue::String("int".to_string())],
+                HoconValue::Integer(56)
+            )]
+        );
+        assert_eq!(
+            hash::<nom::error::VerboseError<&str>>(r#"{"int":56, bool: true}"#, &config)
+                .unwrap()
+                .1,
+            vec![
+                (
+                    vec![HoconValue::String("int".to_string())],
+                    HoconValue::Integer(56)
+                ),
+                (
+                    vec![HoconValue::UnquotedString("bool".to_string())],
+                    HoconValue::Boolean(true)
+                )
+            ]
         );
     }
 }
