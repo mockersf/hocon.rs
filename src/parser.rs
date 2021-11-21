@@ -472,3 +472,46 @@ pub(crate) fn root<'a, E: 'a + ParseError<&'a str>>(
         |p| p.1,
     )(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{internals::HoconValue, loader_config::HoconLoaderConfig};
+
+    use super::{key_value, maybe_comments};
+
+    #[test]
+    fn can_parse_comments() {
+        assert_eq!(maybe_comments::<()>("input").unwrap().0, "input");
+        assert_eq!(maybe_comments::<()>("//input\n").unwrap().0, "");
+        assert_eq!(maybe_comments::<()>("  //input\n").unwrap().0, "");
+        assert_eq!(
+            maybe_comments::<()>("//input\n//input2\nremaining")
+                .unwrap()
+                .0,
+            "remaining"
+        );
+    }
+
+    #[test]
+    fn can_parse_keyvalue() {
+        let config = HoconLoaderConfig::default();
+        assert_eq!(
+            key_value::<nom::error::VerboseError<&str>>(r#""int":56"#, &config)
+                .unwrap()
+                .1,
+            vec![(
+                vec![HoconValue::String("int".to_string())],
+                HoconValue::Integer(56)
+            )]
+        );
+        assert_eq!(
+            key_value::<nom::error::VerboseError<&str>>(r#"int:56"#, &config)
+                .unwrap()
+                .1,
+            vec![(
+                vec![HoconValue::UnquotedString("int".to_string())],
+                HoconValue::Integer(56)
+            )]
+        );
+    }
+}
