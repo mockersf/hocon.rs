@@ -150,9 +150,9 @@ fn array<'a, E: 'a + ParseError<&'a str>>(
     config: &'a HoconLoaderConfig,
 ) -> IResult<&'a str, Vec<HoconInternal>, E> {
     ws(delimited(
-        tuple((char('['), many0(newline))),
+        tuple((ws(char('[')), many0(newline))),
         separated_list0(separators, move |i| wrapper(i, config)),
-        tuple((opt(separators), char(']'))),
+        tuple((opt(separators), ws(char(']')))),
     ))(input)
 }
 
@@ -252,7 +252,8 @@ fn separators<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a st
     alt((
         multiline_comments,
         value((), many1(newline)),
-        value((), tuple((char(','), maybe_comments))),
+        value((), tuple((ws(char(',')), many1(newline)))),
+        value((), tuple((ws(char(',')), maybe_comments))),
     ))(input)
 }
 
@@ -310,9 +311,9 @@ fn hash<'a, E: 'a + ParseError<&'a str>>(
 ) -> IResult<&'a str, Hash, E> {
     ws(map(
         delimited(
-            tuple((char('{'), many0(newline))),
+            tuple((ws(char('{')), many0(newline))),
             move |i| separated_hashlist(i, config),
-            tuple((opt(separators), char('}'))),
+            tuple((opt(separators), ws(char('}')))),
         ),
         |tuple_vec| {
             tuple_vec
@@ -546,6 +547,25 @@ mod tests {
             hash::<nom::error::VerboseError<&str>>(r#"{"int":56, bool: true}"#, &config)
                 .unwrap()
                 .1,
+            vec![
+                (
+                    vec![HoconValue::String("int".to_string())],
+                    HoconValue::Integer(56)
+                ),
+                (
+                    vec![HoconValue::UnquotedString("bool".to_string())],
+                    HoconValue::Boolean(true)
+                )
+            ]
+        );
+        assert_eq!(
+            hash::<nom::error::VerboseError<&str>>(
+                r#"{"int":56,
+            bool: true}"#,
+                &config
+            )
+            .unwrap()
+            .1,
             vec![
                 (
                     vec![HoconValue::String("int".to_string())],
