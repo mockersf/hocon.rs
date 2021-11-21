@@ -558,4 +558,22 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn can_parse_array() {
+        let config = HoconLoaderConfig::default();
+        assert_eq!(
+            array::<nom::error::VerboseError<&str>>(r#"[5,4]"#, &config)
+                .unwrap()
+                .1,
+            vec![
+                HoconInternal {
+                    internal: vec![(vec![], HoconValue::Integer(5))]
+                },
+                HoconInternal {
+                    internal: vec![(vec![], HoconValue::Integer(4))]
+                }
+            ]
+        );
+    }
 }
