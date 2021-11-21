@@ -5,10 +5,7 @@ use std::{
 
 use nom::{
     branch::alt,
-    bytes::{
-        complete::{escaped, is_not, tag, take_until1},
-        streaming::take_until,
-    },
+    bytes::complete::{escaped, is_not, tag, take_till1, take_until},
     character::complete::{char, newline, none_of, one_of},
     combinator::{map, not, opt, value},
     error::ParseError,
@@ -97,7 +94,7 @@ fn boolean<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, 
 
 // TODO: missing stopping unquoted string on '//'
 fn unquoted_string<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &str, E> {
-    take_until1("&\"{}[]:=,+#`^?!@*&'\\\t\n")(input)
+    take_till1(|c| "&\"{}[]:=,+#`^?!@*&'\\\t\n".contains(c))(input)
 }
 
 fn path_substitution<'a, E: 'a + ParseError<&'a str>>(
