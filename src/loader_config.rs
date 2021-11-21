@@ -127,47 +127,45 @@ impl HoconLoaderConfig {
         };
         if let Some(json) = s.json {
             internal = internal.add(
-                crate::parser::root(format!("{}\n\0", json.replace('\r', "\n")).as_bytes(), self)
+                crate::parser::root::<()>(&format!("{}\n\0", json.replace('\r', "\n")), self)
                     .map_err(|_| crate::Error::Parse)
                     .and_then(|(remaining, parsed)| {
                         if Self::remaining_only_whitespace(remaining) {
-                            parsed
+                            Ok(parsed)
                         } else if self.strict {
                             Err(crate::Error::Deserialization {
                                 message: String::from("file could not be parsed completely"),
                             })
                         } else {
-                            parsed
+                            Ok(parsed)
                         }
                     })?,
             );
         };
         if let Some(hocon) = s.hocon {
             internal = internal.add(
-                crate::parser::root(
-                    format!("{}\n\0", hocon.replace('\r', "\n")).as_bytes(),
-                    self,
-                )
-                .map_err(|_| crate::Error::Parse)
-                .and_then(|(remaining, parsed)| {
-                    if Self::remaining_only_whitespace(remaining) {
-                        parsed
-                    } else if self.strict {
-                        Err(crate::Error::Deserialization {
-                            message: String::from("file could not be parsed completely"),
-                        })
-                    } else {
-                        parsed
-                    }
-                })?,
+                crate::parser::root::<()>(&format!("{}\n\0", hocon.replace('\r', "\n")), self)
+                    .map_err(|_| crate::Error::Parse)
+                    .and_then(|(remaining, parsed)| {
+                        if Self::remaining_only_whitespace(remaining) {
+                            Ok(parsed)
+                        } else if self.strict {
+                            Err(crate::Error::Deserialization {
+                                message: String::from("file could not be parsed completely"),
+                            })
+                        } else {
+                            Ok(parsed)
+                        }
+                    })?,
             );
         };
 
         Ok(internal)
     }
 
-    fn remaining_only_whitespace(remaining: &[u8]) -> bool {
+    fn remaining_only_whitespace(remaining: &str) -> bool {
         remaining
+            .as_bytes()
             .iter()
             .find(|c| {
                 **c != 10 // \n
