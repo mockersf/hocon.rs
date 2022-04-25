@@ -261,14 +261,13 @@ impl HoconValue {
                 {
                     let children = substituted
                         .into_iter()
-                        .map(|node| match node {
+                        .flat_map(|node| match node {
                             Node::Leaf(_) => vec![std::rc::Rc::new(Child {
                                 key: HoconValue::Integer(0),
                                 value: std::cell::RefCell::new(node),
                             })],
                             Node::Node { children, .. } => children,
                         })
-                        .flatten()
                         .enumerate()
                         .filter_map(|(i, child)| match *child.value.borrow() {
                             Node::Leaf(HoconValue::UnquotedString(ref us))

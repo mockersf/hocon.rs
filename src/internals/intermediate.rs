@@ -95,14 +95,13 @@ impl Node {
                                     .collect(),
                             )?
                             .into_iter()
-                            .map(|v| {
+                            .flat_map(|v| {
                                 if let Hocon::Array(vs) = v {
                                     vs.into_iter()
                                 } else {
                                     vec![v].into_iter()
                                 }
                             })
-                            .flatten()
                             .collect(),
                         )),
                         (HoconValue::Integer(_), _) | (HoconValue::Null(_), _) => {

@@ -332,7 +332,7 @@ impl HoconInternal {
                     let value = concatenated_arrays
                         .get(&target.to_path())
                         .cloned()
-                        .unwrap_or_else(HashMap::new);
+                        .unwrap_or_default();
                     concatenated_arrays
                         .entry(full_path.clone())
                         .or_insert(value);
