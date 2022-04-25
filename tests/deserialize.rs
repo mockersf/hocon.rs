@@ -150,9 +150,23 @@ fn deserialize_filesize() {
         data: u32,
     }
     let s = r#"{
-            data: 32M
+            data: 32.5M
         }"#;
 
     let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
-    assert_eq!(doc.data, 33554432);
+    assert_eq!(doc.data, 34078720);
+}
+
+#[test]
+fn deserialize_filesize_as_float() {
+    #[derive(Deserialize, Debug)]
+    struct Test {
+        data: f32,
+    }
+    let s = r#"{
+            data: 2.5M
+        }"#;
+
+    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    assert_eq!(doc.data, 2621440.0);
 }
