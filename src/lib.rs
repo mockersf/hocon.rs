@@ -659,11 +659,7 @@ mod tests {
         assert_eq!(doc["d"], Hocon::BadValue(super::Error::MissingKey));
         assert_eq!(
             doc["https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf"],
-            Hocon::BadValue(
-                super::Error::Include {
-                    path: String::from("https://raw.githubusercontent.com/mockersf/hocon.rs/master/tests/data/basic.conf")
-                }
-            )
+            Hocon::BadValue(super::Error::MissingKey)
         );
     }
 }

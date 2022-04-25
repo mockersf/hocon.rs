@@ -371,6 +371,8 @@ impl PartialEq for HoconValue {
         match (self, rhs) {
             (HoconValue::Integer(left), HoconValue::Integer(right)) => left == right,
             (HoconValue::String(left), HoconValue::String(right)) => left == right,
+            (HoconValue::UnquotedString(left), HoconValue::UnquotedString(right)) => left == right,
+            (HoconValue::Boolean(left), HoconValue::Boolean(right)) => left == right,
             (HoconValue::BadValue(left), HoconValue::BadValue(right)) => left == right,
             (HoconValue::Null(left), HoconValue::Null(right)) => left == right,
             _ => false,
