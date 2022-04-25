@@ -39,6 +39,7 @@ fn deserialize_struct() {
 fn deserialize_struct_missing_field() {
     #[derive(Deserialize, Debug)]
     struct Test {
+        #[allow(dead_code)]
         a: String,
     }
 
@@ -81,14 +82,17 @@ fn deserialize_multilevel_struct() {
 fn deserialize_multilevel_struct_missing_field() {
     #[derive(Deserialize, Debug)]
     struct InnerInner {
+        #[allow(dead_code)]
         a: String,
     }
     #[derive(Deserialize, Debug)]
     struct Inner {
+        #[allow(dead_code)]
         ii: InnerInner,
     }
     #[derive(Deserialize, Debug)]
     struct Test {
+        #[allow(dead_code)]
         i: Inner,
     }
 
@@ -137,4 +141,18 @@ fn deserialize_struct_duration_with() {
     let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
 
     assert_eq!(doc.a, std::time::Duration::from_secs(1));
+}
+
+#[test]
+fn deserialize_filesize() {
+    #[derive(Deserialize, Debug)]
+    struct Test {
+        data: u32,
+    }
+    let s = r#"{
+            data: 32M
+        }"#;
+
+    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    assert_eq!(doc.data, 33554432);
 }

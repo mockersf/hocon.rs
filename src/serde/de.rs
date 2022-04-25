@@ -11,21 +11,24 @@ macro_rules! impl_deserialize_n {
         where
             V: serde::de::Visitor<'de>,
         {
-            visitor.$visit(
-                self.read
+            visitor.$visit({
+                let value = self
+                    .read
                     .get_attribute_value(&self.current_field)
                     .ok_or_else(|| Error {
                         message: format!("missing integer for field \"{}\"", self.current_field),
                     })?
-                    .clone()
+                    .clone();
+                value
                     .as_i64()
+                    .or_else(|| value.as_bytes().map(|v| v as i64))
                     .ok_or_else(|| Error {
                         message: format!(
                             "Invalid type for field \"{}\", expected integer",
                             self.current_field
                         ),
-                    })?,
-            )
+                    })?
+            })
         }
     };
     ($type:ty, $method:ident, $visit:ident) => {
@@ -33,21 +36,24 @@ macro_rules! impl_deserialize_n {
         where
             V: serde::de::Visitor<'de>,
         {
-            visitor.$visit(
-                self.read
+            visitor.$visit({
+                let value = self
+                    .read
                     .get_attribute_value(&self.current_field)
                     .ok_or_else(|| Error {
                         message: format!("missing integer for field \"{}\"", self.current_field),
                     })?
-                    .clone()
+                    .clone();
+                value
                     .as_i64()
+                    .or_else(|| value.as_bytes().map(|v| v as i64))
                     .ok_or_else(|| Error {
                         message: format!(
                             "Invalid type for field \"{}\", expected integer",
                             self.current_field
                         ),
-                    })? as $type,
-            )
+                    })? as $type
+            })
         }
     };
 }
@@ -57,21 +63,24 @@ macro_rules! impl_deserialize_f {
         where
             V: serde::de::Visitor<'de>,
         {
-            visitor.$visit(
-                self.read
+            visitor.$visit({
+                let value = self
+                    .read
                     .get_attribute_value(&self.current_field)
                     .ok_or_else(|| Error {
                         message: format!("missing float for field \"{}\"", self.current_field),
                     })?
-                    .clone()
+                    .clone();
+                value
                     .as_f64()
+                    .or_else(|| value.as_bytes())
                     .ok_or_else(|| Error {
                         message: format!(
                             "Invalid type for field \"{}\", expected float",
                             self.current_field
                         ),
-                    })?,
-            )
+                    })?
+            })
         }
     };
     ($type:ty, $method:ident, $visit:ident) => {
@@ -79,21 +88,24 @@ macro_rules! impl_deserialize_f {
         where
             V: serde::de::Visitor<'de>,
         {
-            visitor.$visit(
-                self.read
+            visitor.$visit({
+                let value = self
+                    .read
                     .get_attribute_value(&self.current_field)
                     .ok_or_else(|| Error {
                         message: format!("missing float for field \"{}\"", self.current_field),
                     })?
-                    .clone()
+                    .clone();
+                value
                     .as_f64()
+                    .or_else(|| value.as_bytes())
                     .ok_or_else(|| Error {
                         message: format!(
                             "Invalid type for field \"{}\", expected float",
                             self.current_field
                         ),
-                    })? as $type,
-            )
+                    })? as $type
+            })
         }
     };
 }
