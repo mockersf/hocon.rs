@@ -117,7 +117,7 @@ impl HoconInternal {
         let mut indexer: Box<dyn Fn(i64) -> HoconValue> = Box::new(HoconValue::Integer);
         if !a.is_empty() && a[0].internal.len() == 1 {
             if let HoconValue::PathSubstitutionInParent(_) = a[0].internal[0].1 {
-                let index_prefix = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                let index_prefix = uuid::Uuid::new_v4().hyphenated().to_string();
                 indexer = Box::new(move |i| HoconValue::Null(format!("{}-{}", index_prefix, i)));
             }
         }
