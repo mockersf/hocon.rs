@@ -555,16 +555,24 @@ mod tests {
 
     #[derive(Deserialize, Debug)]
     struct Simple {
+        #[allow(dead_code)]
         int: i64,
+        #[allow(dead_code)]
         float: f64,
+        #[allow(dead_code)]
         option_int: Option<u64>,
     }
     #[derive(Deserialize, Debug)]
     struct WithSubStruct {
+        #[allow(dead_code)]
         vec_sub: Vec<Simple>,
+        #[allow(dead_code)]
         int: i32,
+        #[allow(dead_code)]
         float: f32,
+        #[allow(dead_code)]
         boolean: bool,
+        #[allow(dead_code)]
         string: String,
     }
 
