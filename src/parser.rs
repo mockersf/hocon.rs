@@ -277,7 +277,7 @@ named_args!(
                 // to concat to an array
                 separated_pair!(ws!(string), ws!(tag!("+=")), call!(wrapper, config))
                     => { |(s, h): (Cow<str>, Result<HoconInternal, _>)| {
-                            let item_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                            let item_id = uuid::Uuid::new_v4().hyphenated().to_string();
                             Ok(HoconInternal::from_object(h?.internal)
                                 .transform(|k, v| (
                                     k.clone(),
@@ -303,7 +303,7 @@ named_args!(
                 // to concat to an array
                 separated_pair!(ws!(unquoted_string), ws!(tag!("+=")), call!(wrapper, config))
                     => { |(s, h): (&str, Result<HoconInternal, _>)| {
-                            let item_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+                            let item_id = uuid::Uuid::new_v4().hyphenated().to_string();
                             Ok(HoconInternal::from_object(h?.internal)
                                 .transform(|k, v| (
                                     k.clone(),
