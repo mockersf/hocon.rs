@@ -73,7 +73,7 @@ macro_rules! impl_deserialize_f {
                     .clone();
                 value
                     .as_f64()
-                    .or_else(|| value.as_bytes())
+                    .or_else(|| value.as_bytes().map(|v| v as f64))
                     .ok_or_else(|| Error {
                         message: format!(
                             "Invalid type for field \"{}\", expected float",
@@ -98,7 +98,7 @@ macro_rules! impl_deserialize_f {
                     .clone();
                 value
                     .as_f64()
-                    .or_else(|| value.as_bytes())
+                    .or_else(|| value.as_bytes().map(|v| v as f64))
                     .ok_or_else(|| Error {
                         message: format!(
                             "Invalid type for field \"{}\", expected float",
