@@ -1,5 +1,11 @@
 # HOCON.rs [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Realease Doc](https://docs.rs/hocon/badge.svg)](https://docs.rs/hocon) [![Crate](https://img.shields.io/crates/v/hocon.svg)](https://crates.io/crates/hocon)
 
+> **Warning**
+>
+> This repository is archived as I don't use this crate anymore and don't have the time to update its dependencies. It's stuck on an old version of `nom` and too painful for me to update for now. 
+>
+> You can contact me if you want to help with maintenance or take over.
+
 The API docs for the master branch are published [here](https://mockersf.github.io/hocon.rs/).
 
 Parse HOCON configuration files in Rust following the
